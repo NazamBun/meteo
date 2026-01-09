@@ -23,3 +23,6 @@ captures/
 
 # KMP / Xcode
 iosApp/build/
+
+# Kotlin build cache (do not commit)
+.kotlin/
