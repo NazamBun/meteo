@@ -41,6 +41,10 @@ object WeatherMapper {
             city = city,
             temperatureC = tempC,
             description = codeToText(code),
+
+            // ✅ nouveau champ
+            weatherCode = code,
+
             hourly = hourly,
             daily = daily
         )

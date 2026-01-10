@@ -15,13 +15,17 @@ import androidx.compose.foundation.lazy.LazyRow
 import androidx.compose.foundation.lazy.items
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material.icons.Icons
+import androidx.compose.material.icons.rounded.AcUnit
 import androidx.compose.material.icons.rounded.Clear
 import androidx.compose.material.icons.rounded.Cloud
+import androidx.compose.material.icons.rounded.FlashOn
 import androidx.compose.material.icons.rounded.LocationOn
 import androidx.compose.material.icons.rounded.Refresh
 import androidx.compose.material.icons.rounded.Search
 import androidx.compose.material.icons.rounded.Schedule
 import androidx.compose.material.icons.rounded.Thermostat
+import androidx.compose.material.icons.rounded.Umbrella
+import androidx.compose.material.icons.rounded.WbSunny
 import androidx.compose.material3.Button
 import androidx.compose.material3.Card
 import androidx.compose.material3.CardDefaults
@@ -275,11 +279,7 @@ private fun ErrorCard(
 @Composable
 private fun WeatherContent(weather: Weather) {
     Column(verticalArrangement = Arrangement.spacedBy(12.dp)) {
-        MainWeatherCard(
-            city = weather.city,
-            temp = weather.temperatureC,
-            description = weather.description
-        )
+        MainWeatherCard(weather = weather)
 
         if (weather.hourly.isNotEmpty()) {
             HourlyRow(hourly = weather.hourly)
@@ -292,11 +292,9 @@ private fun WeatherContent(weather: Weather) {
 }
 
 @Composable
-private fun MainWeatherCard(
-    city: String,
-    temp: Int,
-    description: String
-) {
+private fun MainWeatherCard(weather: Weather) {
+    val icon = weatherIconForCode(weather.weatherCode)
+
     Card(
         modifier = Modifier.fillMaxWidth(),
         shape = RoundedCornerShape(18.dp),
@@ -306,29 +304,39 @@ private fun MainWeatherCard(
             modifier = Modifier.fillMaxWidth().padding(16.dp),
             verticalArrangement = Arrangement.spacedBy(10.dp)
         ) {
-            Text(text = city, style = MaterialTheme.typography.headlineSmall)
+            Text(text = weather.city, style = MaterialTheme.typography.headlineSmall)
 
-            Row(verticalAlignment = Alignment.CenterVertically) {
+            Row(
+                verticalAlignment = Alignment.CenterVertically,
+                horizontalArrangement = Arrangement.spacedBy(12.dp)
+            ) {
                 Icon(
-                    imageVector = Icons.Rounded.Thermostat,
+                    imageVector = icon,
                     contentDescription = null,
-                    modifier = Modifier.size(22.dp)
+                    modifier = Modifier.size(48.dp)
                 )
-                Spacer(modifier = Modifier.size(8.dp))
-                Text(
-                    text = "$temp C",
-                    style = MaterialTheme.typography.displaySmall
-                )
-            }
 
-            Row(verticalAlignment = Alignment.CenterVertically) {
-                Icon(
-                    imageVector = Icons.Rounded.Cloud,
-                    contentDescription = null,
-                    modifier = Modifier.size(20.dp)
-                )
-                Spacer(modifier = Modifier.size(8.dp))
-                Text(text = description, style = MaterialTheme.typography.bodyLarge)
+                Column(verticalArrangement = Arrangement.spacedBy(4.dp)) {
+                    Row(verticalAlignment = Alignment.CenterVertically) {
+                        Icon(
+                            imageVector = Icons.Rounded.Thermostat,
+                            contentDescription = null,
+                            modifier = Modifier.size(20.dp)
+                        )
+                        Spacer(modifier = Modifier.size(8.dp))
+                        Text(
+                            text = "${weather.temperatureC}°C",
+                            style = MaterialTheme.typography.displaySmall
+                        )
+                    }
+
+                    Text(
+                        text = weather.description,
+                        style = MaterialTheme.typography.bodyLarge,
+                        maxLines = 1,
+                        overflow = TextOverflow.Ellipsis
+                    )
+                }
             }
         }
     }
@@ -375,7 +383,7 @@ private fun HourChip(hour: String, temp: Int) {
         ) {
             Text(text = hour, style = MaterialTheme.typography.labelMedium)
             Spacer(modifier = Modifier.height(4.dp))
-            Text(text = "$temp C", style = MaterialTheme.typography.bodyMedium)
+            Text(text = "${temp}°C", style = MaterialTheme.typography.bodyMedium)
         }
     }
 }
@@ -416,15 +424,30 @@ private fun DailyRow(item: DailyForecast) {
         )
 
         Text(
-            text = "Min ${item.minC} C",
+            text = "Min ${item.minC}°C",
             style = MaterialTheme.typography.bodySmall
         )
 
         Spacer(modifier = Modifier.size(12.dp))
 
         Text(
-            text = "Max ${item.maxC} C",
+            text = "Max ${item.maxC}°C",
             style = MaterialTheme.typography.bodySmall
         )
     }
+}
+
+/**
+ * Choix d'icône simple et efficace selon Open-Meteo weather_code.
+ * Si tu veux, on pourra faire une version encore plus précise.
+ */
+private fun weatherIconForCode(code: Int) = when (code) {
+    0 -> Icons.Rounded.WbSunny                  // ciel clair
+    1, 2, 3 -> Icons.Rounded.Cloud              // nuageux
+    45, 48 -> Icons.Rounded.Cloud               // brouillard (fallback)
+    51, 53, 55 -> Icons.Rounded.Umbrella        // bruine
+    61, 63, 65 -> Icons.Rounded.Umbrella        // pluie
+    71, 73, 75 -> Icons.Rounded.AcUnit          // neige
+    95 -> Icons.Rounded.FlashOn                 // orage
+    else -> Icons.Rounded.Cloud
 }
