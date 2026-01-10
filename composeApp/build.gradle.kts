@@ -55,6 +55,8 @@ kotlin {
 
             // Json
             implementation(libs.kotlinx.serialization.json)
+
+            implementation(compose.materialIconsExtended)
         }
 
         // ✅ Avec applyDefaultHierarchyTemplate(), iosMain existe
