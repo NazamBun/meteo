@@ -5,13 +5,16 @@ import com.nazam.meteo.feature.weather.domain.model.Weather
 import com.nazam.meteo.feature.weather.domain.repository.WeatherRepository
 
 /**
- * UseCase = une action métier.
- * Ici : récupérer la météo.
+ * UseCase = récupérer la météo.
  */
 class GetWeatherUseCase(
     private val repository: WeatherRepository
 ) {
-    suspend fun execute(latitude: Double, longitude: Double): AppResult<Weather> {
-        return repository.getWeather(latitude, longitude)
+    suspend fun execute(
+        latitude: Double,
+        longitude: Double,
+        cityName: String
+    ): AppResult<Weather> {
+        return repository.getWeather(latitude, longitude, cityName)
     }
 }

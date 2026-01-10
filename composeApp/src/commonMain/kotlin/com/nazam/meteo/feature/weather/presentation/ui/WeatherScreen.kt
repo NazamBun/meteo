@@ -1,69 +1,139 @@
 package com.nazam.meteo.feature.weather.presentation.ui
 
-import androidx.compose.foundation.background
+import androidx.compose.foundation.clickable
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Column
-import androidx.compose.foundation.layout.Row
-import androidx.compose.foundation.layout.Spacer
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.fillMaxWidth
-import androidx.compose.foundation.layout.height
 import androidx.compose.foundation.layout.padding
-import androidx.compose.foundation.layout.width
-import androidx.compose.foundation.lazy.LazyRow
+import androidx.compose.foundation.lazy.LazyColumn
 import androidx.compose.foundation.lazy.items
 import androidx.compose.material3.Button
 import androidx.compose.material3.MaterialTheme
+import androidx.compose.material3.OutlinedTextField
 import androidx.compose.material3.Surface
 import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
-import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
-import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.unit.dp
-import com.nazam.meteo.feature.weather.domain.model.DailyForecast
-import com.nazam.meteo.feature.weather.domain.model.HourlyForecast
-import com.nazam.meteo.feature.weather.domain.model.Weather
+import com.nazam.meteo.feature.weather.domain.model.City
+import com.nazam.meteo.feature.weather.presentation.model.CitySearchUiState
 import com.nazam.meteo.feature.weather.presentation.model.WeatherUiState
 
-/**
- * Écran météo : simple, moderne, et sans icônes.
- * KMP-friendly (que du Compose multiplatform).
- */
 @Composable
 fun WeatherScreen(
-    uiState: WeatherUiState,
+    weatherUiState: WeatherUiState,
+    searchUiState: CitySearchUiState,
+    onSearchQueryChange: (String) -> Unit,
+    onSearchClick: () -> Unit,
+    onCitySelected: (City) -> Unit,
     onRetry: () -> Unit
 ) {
     Surface(
         modifier = Modifier.fillMaxSize(),
         color = MaterialTheme.colorScheme.background
     ) {
-        when (uiState) {
-            WeatherUiState.Loading -> LoadingContent()
-            is WeatherUiState.Error -> ErrorContent(
-                message = uiState.message,
-                onRetry = onRetry
+        Column(
+            modifier = Modifier.fillMaxSize().padding(16.dp),
+            verticalArrangement = Arrangement.spacedBy(16.dp)
+        ) {
+            SearchSection(
+                uiState = searchUiState,
+                onQueryChange = onSearchQueryChange,
+                onSearchClick = onSearchClick,
+                onCitySelected = onCitySelected
             )
-            is WeatherUiState.Success -> WeatherContent(weather = uiState.weather)
+
+            when (weatherUiState) {
+                WeatherUiState.Loading -> LoadingContent()
+                is WeatherUiState.Error -> ErrorContent(message = weatherUiState.message, onRetry = onRetry)
+                is WeatherUiState.Success -> SuccessContent(
+                    city = weatherUiState.weather.city,
+                    temp = weatherUiState.weather.temperatureC,
+                    description = weatherUiState.weather.description
+                )
+            }
+        }
+    }
+}
+
+@Composable
+private fun SearchSection(
+    uiState: CitySearchUiState,
+    onQueryChange: (String) -> Unit,
+    onSearchClick: () -> Unit,
+    onCitySelected: (City) -> Unit
+) {
+    Column(verticalArrangement = Arrangement.spacedBy(8.dp)) {
+        Text(
+            text = "Rechercher une ville",
+            style = MaterialTheme.typography.titleMedium
+        )
+
+        OutlinedTextField(
+            value = uiState.query,
+            onValueChange = onQueryChange,
+            modifier = Modifier.fillMaxWidth(),
+            singleLine = true,
+            label = { Text("Ex: Paris") }
+        )
+
+        Button(
+            onClick = onSearchClick,
+            modifier = Modifier.fillMaxWidth(),
+            enabled = !uiState.isLoading
+        ) {
+            Text(if (uiState.isLoading) "Recherche..." else "Chercher")
+        }
+
+        uiState.errorMessage?.let { msg ->
+            Text(text = msg, style = MaterialTheme.typography.bodyMedium)
+        }
+
+        if (uiState.results.isNotEmpty()) {
+            Text(
+                text = "Résultats",
+                style = MaterialTheme.typography.titleSmall
+            )
+
+            LazyColumn(
+                modifier = Modifier.fillMaxWidth(),
+                verticalArrangement = Arrangement.spacedBy(6.dp)
+            ) {
+                items(uiState.results) { city ->
+                    CityRow(
+                        city = city,
+                        onClick = { onCitySelected(city) }
+                    )
+                }
+            }
+        }
+    }
+}
+
+@Composable
+private fun CityRow(
+    city: City,
+    onClick: () -> Unit
+) {
+    Surface(
+        modifier = Modifier.fillMaxWidth().clickable(onClick = onClick),
+        tonalElevation = 2.dp,
+        shape = MaterialTheme.shapes.medium
+    ) {
+        Column(modifier = Modifier.padding(12.dp)) {
+            Text(text = city.displayName(), style = MaterialTheme.typography.bodyLarge)
+            Text(
+                text = "Lat ${city.latitude}, Lon ${city.longitude}",
+                style = MaterialTheme.typography.bodySmall
+            )
         }
     }
 }
 
 @Composable
 private fun LoadingContent() {
-    Column(
-        modifier = Modifier
-            .fillMaxSize()
-            .padding(24.dp),
-        verticalArrangement = Arrangement.Center,
-        horizontalAlignment = Alignment.CenterHorizontally
-    ) {
-        Text(
-            text = "Chargement...",
-            style = MaterialTheme.typography.bodyLarge
-        )
-    }
+    Text(text = "Chargement...", style = MaterialTheme.typography.bodyLarge)
 }
 
 @Composable
@@ -71,18 +141,8 @@ private fun ErrorContent(
     message: String,
     onRetry: () -> Unit
 ) {
-    Column(
-        modifier = Modifier
-            .fillMaxSize()
-            .padding(24.dp),
-        verticalArrangement = Arrangement.Center,
-        horizontalAlignment = Alignment.CenterHorizontally
-    ) {
-        Text(
-            text = message,
-            style = MaterialTheme.typography.bodyLarge
-        )
-        Spacer(modifier = Modifier.height(12.dp))
+    Column(verticalArrangement = Arrangement.spacedBy(8.dp)) {
+        Text(text = message, style = MaterialTheme.typography.bodyLarge)
         Button(onClick = onRetry) {
             Text(text = "Réessayer")
         }
@@ -90,165 +150,14 @@ private fun ErrorContent(
 }
 
 @Composable
-private fun WeatherContent(weather: Weather) {
-    Column(
-        modifier = Modifier
-            .fillMaxSize()
-            .padding(20.dp)
-    ) {
-        // ✅ Header
-        HeaderCard(
-            city = weather.city,
-            temperatureC = weather.temperatureC,
-            description = weather.description
-        )
-
-        Spacer(modifier = Modifier.height(16.dp))
-
-        // ✅ Hourly (horizontal)
-        SectionTitle(title = "Heure par heure")
-        Spacer(modifier = Modifier.height(8.dp))
-        HourlyRow(items = weather.hourly)
-
-        Spacer(modifier = Modifier.height(16.dp))
-
-        // ✅ Daily (vertical)
-        SectionTitle(title = "Prochains jours")
-        Spacer(modifier = Modifier.height(8.dp))
-        DailyColumn(items = weather.daily)
-    }
-}
-
-@Composable
-private fun HeaderCard(
+private fun SuccessContent(
     city: String,
-    temperatureC: Int,
+    temp: Int,
     description: String
 ) {
-    Column(
-        modifier = Modifier
-            .fillMaxWidth()
-            .background(
-                color = MaterialTheme.colorScheme.surfaceVariant
-            )
-            .padding(16.dp)
-    ) {
-        Text(
-            text = city,
-            style = MaterialTheme.typography.headlineSmall,
-            maxLines = 1,
-            overflow = TextOverflow.Ellipsis
-        )
-
-        Spacer(modifier = Modifier.height(6.dp))
-
-        Text(
-            text = "$temperatureC°C",
-            style = MaterialTheme.typography.displaySmall
-        )
-
-        Spacer(modifier = Modifier.height(6.dp))
-
-        Text(
-            text = description,
-            style = MaterialTheme.typography.bodyLarge,
-            maxLines = 2,
-            overflow = TextOverflow.Ellipsis
-        )
-    }
-}
-
-@Composable
-private fun SectionTitle(title: String) {
-    Text(
-        text = title,
-        style = MaterialTheme.typography.titleMedium
-    )
-}
-
-@Composable
-private fun HourlyRow(items: List<HourlyForecast>) {
-    if (items.isEmpty()) {
-        Text(text = "Aucune donnée", style = MaterialTheme.typography.bodyMedium)
-        return
-    }
-
-    LazyRow(
-        horizontalArrangement = Arrangement.spacedBy(10.dp),
-        modifier = Modifier.fillMaxWidth()
-    ) {
-        items(items) { hour ->
-            HourlyItem(item = hour)
-        }
-    }
-}
-
-@Composable
-private fun HourlyItem(item: HourlyForecast) {
-    Column(
-        modifier = Modifier
-            .width(88.dp)
-            .background(MaterialTheme.colorScheme.surfaceVariant)
-            .padding(12.dp),
-        horizontalAlignment = Alignment.CenterHorizontally
-    ) {
-        Text(
-            text = item.hour,
-            style = MaterialTheme.typography.bodyMedium,
-            maxLines = 1
-        )
-        Spacer(modifier = Modifier.height(6.dp))
-        Text(
-            text = "${item.temperatureC}°",
-            style = MaterialTheme.typography.titleMedium
-        )
-    }
-}
-
-@Composable
-private fun DailyColumn(items: List<DailyForecast>) {
-    if (items.isEmpty()) {
-        Text(text = "Aucune donnée", style = MaterialTheme.typography.bodyMedium)
-        return
-    }
-
-    Column(
-        verticalArrangement = Arrangement.spacedBy(10.dp),
-        modifier = Modifier.fillMaxWidth()
-    ) {
-        items.forEach { day ->
-            DailyItem(item = day)
-        }
-    }
-}
-
-@Composable
-private fun DailyItem(item: DailyForecast) {
-    Row(
-        modifier = Modifier
-            .fillMaxWidth()
-            .background(MaterialTheme.colorScheme.surfaceVariant)
-            .padding(12.dp),
-        verticalAlignment = Alignment.CenterVertically
-    ) {
-        Text(
-            text = item.day,
-            style = MaterialTheme.typography.bodyLarge,
-            modifier = Modifier.weight(1f),
-            maxLines = 1,
-            overflow = TextOverflow.Ellipsis
-        )
-
-        Text(
-            text = "${item.maxC}°",
-            style = MaterialTheme.typography.titleMedium
-        )
-
-        Spacer(modifier = Modifier.width(12.dp))
-
-        Text(
-            text = "${item.minC}°",
-            style = MaterialTheme.typography.bodyMedium
-        )
+    Column(verticalArrangement = Arrangement.spacedBy(6.dp)) {
+        Text(text = city, style = MaterialTheme.typography.headlineMedium)
+        Text(text = "$temp C", style = MaterialTheme.typography.displaySmall)
+        Text(text = description, style = MaterialTheme.typography.bodyLarge)
     }
 }

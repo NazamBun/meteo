@@ -10,13 +10,17 @@ class WeatherRepositoryImpl(
     private val api: OpenMeteoApi
 ) : WeatherRepository {
 
-    override suspend fun getWeather(latitude: Double, longitude: Double): AppResult<Weather> {
+    override suspend fun getWeather(
+        latitude: Double,
+        longitude: Double,
+        cityName: String
+    ): AppResult<Weather> {
         return when (val result = api.fetchWeather(latitude, longitude)) {
             is AppResult.Success -> {
                 AppResult.Success(
                     WeatherMapper.toDomain(
                         dto = result.data,
-                        city = "Ma position"
+                        city = cityName
                     )
                 )
             }
