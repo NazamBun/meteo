@@ -15,17 +15,13 @@ import androidx.compose.foundation.lazy.LazyRow
 import androidx.compose.foundation.lazy.items
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material.icons.Icons
-import androidx.compose.material.icons.rounded.AcUnit
 import androidx.compose.material.icons.rounded.Clear
 import androidx.compose.material.icons.rounded.Cloud
-import androidx.compose.material.icons.rounded.FlashOn
 import androidx.compose.material.icons.rounded.LocationOn
 import androidx.compose.material.icons.rounded.Refresh
 import androidx.compose.material.icons.rounded.Search
 import androidx.compose.material.icons.rounded.Schedule
 import androidx.compose.material.icons.rounded.Thermostat
-import androidx.compose.material.icons.rounded.Umbrella
-import androidx.compose.material.icons.rounded.WbSunny
 import androidx.compose.material3.Button
 import androidx.compose.material3.Card
 import androidx.compose.material3.CardDefaults
@@ -41,6 +37,7 @@ import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.unit.dp
+import com.nazam.meteo.core.ui.AppStrings
 import com.nazam.meteo.feature.weather.domain.model.City
 import com.nazam.meteo.feature.weather.domain.model.DailyForecast
 import com.nazam.meteo.feature.weather.domain.model.HourlyForecast
@@ -76,7 +73,10 @@ fun WeatherScreen(
 
             when (weatherUiState) {
                 WeatherUiState.Loading -> LoadingCard()
-                is WeatherUiState.Error -> ErrorCard(message = weatherUiState.message, onRetry = onRetry)
+                is WeatherUiState.Error -> ErrorCard(
+                    message = weatherUiState.message.asString(),
+                    onRetry = onRetry
+                )
                 is WeatherUiState.Success -> WeatherContent(weather = weatherUiState.weather)
             }
         }
@@ -87,11 +87,11 @@ fun WeatherScreen(
 private fun Header() {
     Column(verticalArrangement = Arrangement.spacedBy(4.dp)) {
         Text(
-            text = "Météo",
+            text = AppStrings.get(AppStrings.Key.AppTitle),
             style = MaterialTheme.typography.headlineMedium
         )
         Text(
-            text = "Choisis une ville, puis regarde la météo",
+            text = AppStrings.get(AppStrings.Key.AppSubtitle),
             style = MaterialTheme.typography.bodyMedium
         )
     }
@@ -115,13 +115,10 @@ private fun SearchCard(
             verticalArrangement = Arrangement.spacedBy(12.dp)
         ) {
             Row(verticalAlignment = Alignment.CenterVertically) {
-                Icon(
-                    imageVector = Icons.Rounded.Search,
-                    contentDescription = null
-                )
+                Icon(imageVector = Icons.Rounded.Search, contentDescription = null)
                 Spacer(modifier = Modifier.size(8.dp))
                 Text(
-                    text = "Recherche de ville",
+                    text = AppStrings.get(AppStrings.Key.SearchTitle),
                     style = MaterialTheme.typography.titleMedium
                 )
             }
@@ -131,7 +128,7 @@ private fun SearchCard(
                 onValueChange = onQueryChange,
                 modifier = Modifier.fillMaxWidth(),
                 singleLine = true,
-                label = { Text("Ex: Paris") },
+                label = { Text(AppStrings.get(AppStrings.Key.SearchHint)) },
                 leadingIcon = {
                     Icon(imageVector = Icons.Rounded.LocationOn, contentDescription = null)
                 },
@@ -156,20 +153,23 @@ private fun SearchCard(
                         modifier = Modifier.size(18.dp)
                     )
                     Spacer(modifier = Modifier.size(8.dp))
-                    Text(if (uiState.isLoading) "Recherche..." else "Chercher")
+                    Text(
+                        if (uiState.isLoading) AppStrings.get(AppStrings.Key.Searching)
+                        else AppStrings.get(AppStrings.Key.SearchButton)
+                    )
                 }
             }
 
             uiState.errorMessage?.let { msg ->
                 Text(
-                    text = msg,
+                    text = msg.asString(),
                     style = MaterialTheme.typography.bodyMedium
                 )
             }
 
             if (uiState.results.isNotEmpty()) {
                 Text(
-                    text = "Résultats",
+                    text = AppStrings.get(AppStrings.Key.ResultsTitle),
                     style = MaterialTheme.typography.titleSmall
                 )
 
@@ -192,9 +192,7 @@ private fun CityRow(
     onClick: () -> Unit
 ) {
     Card(
-        modifier = Modifier
-            .fillMaxWidth()
-            .clickable(onClick = onClick),
+        modifier = Modifier.fillMaxWidth().clickable(onClick = onClick),
         shape = RoundedCornerShape(14.dp),
         colors = CardDefaults.cardColors(containerColor = MaterialTheme.colorScheme.surface),
         elevation = CardDefaults.cardElevation(defaultElevation = 0.dp)
@@ -219,7 +217,7 @@ private fun CityRow(
                     overflow = TextOverflow.Ellipsis
                 )
                 Text(
-                    text = "Lat ${city.latitude}, Lon ${city.longitude}",
+                    text = AppStrings.latLon(city.latitude, city.longitude),
                     style = MaterialTheme.typography.bodySmall,
                     maxLines = 1,
                     overflow = TextOverflow.Ellipsis
@@ -241,7 +239,10 @@ private fun LoadingCard() {
         ) {
             Icon(imageVector = Icons.Rounded.Cloud, contentDescription = null)
             Spacer(modifier = Modifier.size(10.dp))
-            Text(text = "Chargement...", style = MaterialTheme.typography.bodyLarge)
+            Text(
+                text = AppStrings.get(AppStrings.Key.Loading),
+                style = MaterialTheme.typography.bodyLarge
+            )
         }
     }
 }
@@ -269,7 +270,7 @@ private fun ErrorCard(
                         modifier = Modifier.size(18.dp)
                     )
                     Spacer(modifier = Modifier.size(8.dp))
-                    Text(text = "Réessayer")
+                    Text(text = AppStrings.get(AppStrings.Key.Retry))
                 }
             }
         }
@@ -279,7 +280,11 @@ private fun ErrorCard(
 @Composable
 private fun WeatherContent(weather: Weather) {
     Column(verticalArrangement = Arrangement.spacedBy(12.dp)) {
-        MainWeatherCard(weather = weather)
+        MainWeatherCard(
+            city = weather.city,
+            temp = weather.temperatureC,
+            description = weather.description
+        )
 
         if (weather.hourly.isNotEmpty()) {
             HourlyRow(hourly = weather.hourly)
@@ -292,9 +297,11 @@ private fun WeatherContent(weather: Weather) {
 }
 
 @Composable
-private fun MainWeatherCard(weather: Weather) {
-    val icon = weatherIconForCode(weather.weatherCode)
-
+private fun MainWeatherCard(
+    city: String,
+    temp: Int,
+    description: String
+) {
     Card(
         modifier = Modifier.fillMaxWidth(),
         shape = RoundedCornerShape(18.dp),
@@ -304,39 +311,29 @@ private fun MainWeatherCard(weather: Weather) {
             modifier = Modifier.fillMaxWidth().padding(16.dp),
             verticalArrangement = Arrangement.spacedBy(10.dp)
         ) {
-            Text(text = weather.city, style = MaterialTheme.typography.headlineSmall)
+            Text(text = city, style = MaterialTheme.typography.headlineSmall)
 
-            Row(
-                verticalAlignment = Alignment.CenterVertically,
-                horizontalArrangement = Arrangement.spacedBy(12.dp)
-            ) {
+            Row(verticalAlignment = Alignment.CenterVertically) {
                 Icon(
-                    imageVector = icon,
+                    imageVector = Icons.Rounded.Thermostat,
                     contentDescription = null,
-                    modifier = Modifier.size(48.dp)
+                    modifier = Modifier.size(22.dp)
                 )
+                Spacer(modifier = Modifier.size(8.dp))
+                Text(
+                    text = AppStrings.tempC(temp),
+                    style = MaterialTheme.typography.displaySmall
+                )
+            }
 
-                Column(verticalArrangement = Arrangement.spacedBy(4.dp)) {
-                    Row(verticalAlignment = Alignment.CenterVertically) {
-                        Icon(
-                            imageVector = Icons.Rounded.Thermostat,
-                            contentDescription = null,
-                            modifier = Modifier.size(20.dp)
-                        )
-                        Spacer(modifier = Modifier.size(8.dp))
-                        Text(
-                            text = "${weather.temperatureC}°C",
-                            style = MaterialTheme.typography.displaySmall
-                        )
-                    }
-
-                    Text(
-                        text = weather.description,
-                        style = MaterialTheme.typography.bodyLarge,
-                        maxLines = 1,
-                        overflow = TextOverflow.Ellipsis
-                    )
-                }
+            Row(verticalAlignment = Alignment.CenterVertically) {
+                Icon(
+                    imageVector = Icons.Rounded.Cloud,
+                    contentDescription = null,
+                    modifier = Modifier.size(20.dp)
+                )
+                Spacer(modifier = Modifier.size(8.dp))
+                Text(text = description, style = MaterialTheme.typography.bodyLarge)
             }
         }
     }
@@ -359,7 +356,10 @@ private fun HourlyRow(hourly: List<HourlyForecast>) {
                     modifier = Modifier.size(20.dp)
                 )
                 Spacer(modifier = Modifier.size(8.dp))
-                Text(text = "Heure par heure", style = MaterialTheme.typography.titleMedium)
+                Text(
+                    text = AppStrings.get(AppStrings.Key.HourlyTitle),
+                    style = MaterialTheme.typography.titleMedium
+                )
             }
 
             LazyRow(horizontalArrangement = Arrangement.spacedBy(8.dp)) {
@@ -383,7 +383,7 @@ private fun HourChip(hour: String, temp: Int) {
         ) {
             Text(text = hour, style = MaterialTheme.typography.labelMedium)
             Spacer(modifier = Modifier.height(4.dp))
-            Text(text = "${temp}°C", style = MaterialTheme.typography.bodyMedium)
+            Text(text = AppStrings.tempC(temp), style = MaterialTheme.typography.bodyMedium)
         }
     }
 }
@@ -398,7 +398,10 @@ private fun DailyList(daily: List<DailyForecast>) {
             modifier = Modifier.fillMaxWidth().padding(16.dp),
             verticalArrangement = Arrangement.spacedBy(10.dp)
         ) {
-            Text(text = "Prévisions", style = MaterialTheme.typography.titleMedium)
+            Text(
+                text = AppStrings.get(AppStrings.Key.DailyTitle),
+                style = MaterialTheme.typography.titleMedium
+            )
 
             Column(verticalArrangement = Arrangement.spacedBy(8.dp)) {
                 daily.take(7).forEach { item ->
@@ -424,30 +427,15 @@ private fun DailyRow(item: DailyForecast) {
         )
 
         Text(
-            text = "Min ${item.minC}°C",
+            text = AppStrings.minTempC(item.minC),
             style = MaterialTheme.typography.bodySmall
         )
 
         Spacer(modifier = Modifier.size(12.dp))
 
         Text(
-            text = "Max ${item.maxC}°C",
+            text = AppStrings.maxTempC(item.maxC),
             style = MaterialTheme.typography.bodySmall
         )
     }
-}
-
-/**
- * Choix d'icône simple et efficace selon Open-Meteo weather_code.
- * Si tu veux, on pourra faire une version encore plus précise.
- */
-private fun weatherIconForCode(code: Int) = when (code) {
-    0 -> Icons.Rounded.WbSunny                  // ciel clair
-    1, 2, 3 -> Icons.Rounded.Cloud              // nuageux
-    45, 48 -> Icons.Rounded.Cloud               // brouillard (fallback)
-    51, 53, 55 -> Icons.Rounded.Umbrella        // bruine
-    61, 63, 65 -> Icons.Rounded.Umbrella        // pluie
-    71, 73, 75 -> Icons.Rounded.AcUnit          // neige
-    95 -> Icons.Rounded.FlashOn                 // orage
-    else -> Icons.Rounded.Cloud
 }
