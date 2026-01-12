@@ -4,7 +4,6 @@ import androidx.lifecycle.ViewModel
 import androidx.lifecycle.viewModelScope
 import com.nazam.meteo.core.result.AppError
 import com.nazam.meteo.core.result.AppResult
-import com.nazam.meteo.core.ui.AppStrings
 import com.nazam.meteo.core.ui.UiText
 import com.nazam.meteo.feature.weather.domain.usecase.SearchCityUseCase
 import com.nazam.meteo.feature.weather.presentation.model.CitySearchUiState
@@ -12,6 +11,10 @@ import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.StateFlow
 import kotlinx.coroutines.flow.asStateFlow
 import kotlinx.coroutines.launch
+import meteo.composeapp.generated.resources.Res
+import meteo.composeapp.generated.resources.error_city_not_found
+import meteo.composeapp.generated.resources.error_no_internet
+import meteo.composeapp.generated.resources.error_unknown
 
 class CitySearchViewModel(
     private val searchCityUseCase: SearchCityUseCase
@@ -21,18 +24,27 @@ class CitySearchViewModel(
     val uiState: StateFlow<CitySearchUiState> = _uiState.asStateFlow()
 
     fun onQueryChange(value: String) {
-        _uiState.value = _uiState.value.copy(query = value, errorMessage = null)
+        _uiState.value = _uiState.value.copy(
+            query = value,
+            errorMessage = null
+        )
     }
 
     fun clearResults() {
-        _uiState.value = _uiState.value.copy(results = emptyList(), errorMessage = null)
+        _uiState.value = _uiState.value.copy(
+            results = emptyList(),
+            errorMessage = null
+        )
     }
 
     fun search() {
         val query = _uiState.value.query.trim()
         if (query.isBlank()) return
 
-        _uiState.value = _uiState.value.copy(isLoading = true, errorMessage = null)
+        _uiState.value = _uiState.value.copy(
+            isLoading = true,
+            errorMessage = null
+        )
 
         viewModelScope.launch {
             when (val result = searchCityUseCase.execute(query)) {
@@ -57,9 +69,9 @@ class CitySearchViewModel(
 
     private fun AppError.toUiText(): UiText {
         return when (this) {
-            AppError.Network -> UiText.StringKey(AppStrings.Key.ErrorNoInternet)
-            AppError.NotFound -> UiText.StringKey(AppStrings.Key.ErrorCityNotFound)
-            is AppError.Unknown -> UiText.StringKey(AppStrings.Key.ErrorUnknown)
+            AppError.Network -> UiText.Resource(Res.string.error_no_internet)
+            AppError.NotFound -> UiText.Resource(Res.string.error_city_not_found)
+            is AppError.Unknown -> UiText.Resource(Res.string.error_unknown)
         }
     }
 }
