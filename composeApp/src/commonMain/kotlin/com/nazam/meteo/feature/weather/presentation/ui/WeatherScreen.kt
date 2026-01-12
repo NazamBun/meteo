@@ -20,13 +20,18 @@ import androidx.compose.foundation.lazy.LazyRow
 import androidx.compose.foundation.lazy.items
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material.icons.Icons
+import androidx.compose.material.icons.rounded.AcUnit
+import androidx.compose.material.icons.rounded.Bolt
 import androidx.compose.material.icons.rounded.Clear
 import androidx.compose.material.icons.rounded.Cloud
+import androidx.compose.material.icons.rounded.CloudQueue
 import androidx.compose.material.icons.rounded.LocationOn
 import androidx.compose.material.icons.rounded.Refresh
 import androidx.compose.material.icons.rounded.Search
 import androidx.compose.material.icons.rounded.Schedule
 import androidx.compose.material.icons.rounded.Thermostat
+import androidx.compose.material.icons.rounded.Umbrella
+import androidx.compose.material.icons.rounded.WbSunny
 import androidx.compose.material3.Button
 import androidx.compose.material3.Card
 import androidx.compose.material3.CardDefaults
@@ -43,6 +48,7 @@ import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.graphics.Brush
 import androidx.compose.ui.graphics.Color
+import androidx.compose.ui.graphics.vector.ImageVector
 import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.unit.dp
 import com.nazam.meteo.core.ui.theme.MeteoColors
@@ -87,44 +93,74 @@ fun WeatherScreen(
     val backgroundBrush = backgroundGradientFor(visual)
     val contentColor = contentColorFor(visual)
 
-    // Astuce importante : on impose une couleur de texte globale,
-    // comme ça icônes + textes restent lisibles.
+    // Texte + icônes lisibles partout
     CompositionLocalProvider(LocalContentColor provides contentColor) {
-        Column(
+        LazyColumn(
             modifier = Modifier
                 .fillMaxSize()
                 .background(backgroundBrush)
-                .windowInsetsPadding(WindowInsets.safeDrawing) // évite status bar + nav bar
+                .windowInsetsPadding(WindowInsets.safeDrawing)
                 .padding(16.dp),
             verticalArrangement = Arrangement.spacedBy(16.dp)
         ) {
-            Header()
+            item {
+                Header()
+            }
 
-            GlassCard(visual = visual) {
-                SearchCardContent(
-                    uiState = searchUiState,
-                    onQueryChange = onSearchQueryChange,
-                    onSearchClick = onSearchClick,
-                    onCitySelected = onCitySelected
-                )
+            item {
+                GlassCard(visual = visual) {
+                    SearchCardContent(
+                        uiState = searchUiState,
+                        onQueryChange = onSearchQueryChange,
+                        onSearchClick = onSearchClick,
+                        onCitySelected = onCitySelected
+                    )
+                }
             }
 
             when (weatherUiState) {
-                WeatherUiState.Loading -> GlassCard(visual = visual) {
-                    LoadingContent()
+                WeatherUiState.Loading -> {
+                    item {
+                        GlassCard(visual = visual) { LoadingContent() }
+                    }
                 }
 
-                is WeatherUiState.Error -> GlassCard(visual = visual) {
-                    ErrorContent(
-                        message = weatherUiState.message.asString(),
-                        onRetry = onRetry
-                    )
+                is WeatherUiState.Error -> {
+                    item {
+                        GlassCard(visual = visual) {
+                            ErrorContent(
+                                message = weatherUiState.message.asString(),
+                                onRetry = onRetry
+                            )
+                        }
+                    }
                 }
 
-                is WeatherUiState.Success -> WeatherContent(
-                    weather = weatherUiState.weather,
-                    visual = visual
-                )
+                is WeatherUiState.Success -> {
+                    // Carte principale (grosse, mise en avant)
+                    item {
+                        GlassCard(visual = visual) {
+                            MainWeatherCard(
+                                weather = weatherUiState.weather,
+                                visual = visual
+                            )
+                        }
+                    }
+
+                    // Heure par heure
+                    if (weatherUiState.weather.hourly.isNotEmpty()) {
+                        item {
+                            GlassCard(visual = visual) { HourlyRow(hourly = weatherUiState.weather.hourly) }
+                        }
+                    }
+
+                    // Prévisions
+                    if (weatherUiState.weather.daily.isNotEmpty()) {
+                        item {
+                            GlassCard(visual = visual) { DailyList(daily = weatherUiState.weather.daily) }
+                        }
+                    }
+                }
             }
         }
     }
@@ -236,17 +272,15 @@ private fun SearchCardContent(
         Text(text = msg.asString(), style = MaterialTheme.typography.bodyMedium)
     }
 
+    // IMPORTANT : pas de LazyColumn ici (sinon scroll dans scroll)
     if (uiState.results.isNotEmpty()) {
         Spacer(modifier = Modifier.height(12.dp))
         Text(text = stringResource(Res.string.results_title), style = MaterialTheme.typography.titleSmall)
 
         Spacer(modifier = Modifier.height(8.dp))
 
-        LazyColumn(
-            modifier = Modifier.fillMaxWidth(),
-            verticalArrangement = Arrangement.spacedBy(8.dp)
-        ) {
-            items(uiState.results) { city ->
+        Column(verticalArrangement = Arrangement.spacedBy(8.dp)) {
+            uiState.results.take(8).forEach { city ->
                 CityRow(city = city, onClick = { onCitySelected(city) })
             }
         }
@@ -289,7 +323,7 @@ private fun CityRow(
 @Composable
 private fun LoadingContent() {
     Row(verticalAlignment = Alignment.CenterVertically) {
-        Icon(imageVector = Icons.Rounded.Cloud, contentDescription = null)
+        Icon(imageVector = Icons.Rounded.CloudQueue, contentDescription = null)
         Spacer(modifier = Modifier.size(10.dp))
         Text(text = stringResource(Res.string.loading), style = MaterialTheme.typography.bodyLarge)
     }
@@ -313,55 +347,77 @@ private fun ErrorContent(
     }
 }
 
+/**
+ * Carte principale :
+ * - Icône météo dynamique (grosse)
+ * - Temp très visible
+ * - Ville + description bien mises en avant
+ */
 @Composable
-private fun WeatherContent(
+private fun MainWeatherCard(
     weather: Weather,
     visual: WeatherVisual
 ) {
-    Column(verticalArrangement = Arrangement.spacedBy(12.dp)) {
-        GlassCard(visual = visual) {
-            MainWeatherCard(
-                city = weather.city,
-                temp = weather.temperatureC,
-                description = weather.description
+    val icon = mainWeatherIconFor(visual, weather.weatherCode)
+
+    Column(verticalArrangement = Arrangement.spacedBy(10.dp)) {
+        // Ligne du haut : ville
+        Text(
+            text = weather.city,
+            style = MaterialTheme.typography.headlineSmall,
+            maxLines = 1,
+            overflow = TextOverflow.Ellipsis
+        )
+
+        // Ligne centrale : grosse icône + grosse température
+        Row(
+            modifier = Modifier.fillMaxWidth(),
+            verticalAlignment = Alignment.CenterVertically
+        ) {
+            Icon(
+                imageVector = icon,
+                contentDescription = null,
+                modifier = Modifier.size(72.dp) // ✅ plus grand
+            )
+
+            Spacer(modifier = Modifier.size(14.dp))
+
+            Column {
+                Text(
+                    text = stringResource(Res.string.temp_c, weather.temperatureC),
+                    style = MaterialTheme.typography.displayMedium // ✅ plus gros
+                )
+
+                Spacer(modifier = Modifier.height(4.dp))
+
+                Row(verticalAlignment = Alignment.CenterVertically) {
+                    Icon(
+                        imageVector = smallWeatherIconFor(visual, weather.weatherCode),
+                        contentDescription = null,
+                        modifier = Modifier.size(20.dp)
+                    )
+                    Spacer(modifier = Modifier.size(8.dp))
+                    Text(
+                        text = weather.description,
+                        style = MaterialTheme.typography.bodyLarge,
+                        color = LocalContentColor.current.copy(alpha = 0.90f),
+                        maxLines = 2,
+                        overflow = TextOverflow.Ellipsis
+                    )
+                }
+            }
+        }
+
+        // Petit détail “thermostat” (optionnel mais sympa)
+        Row(verticalAlignment = Alignment.CenterVertically) {
+            Icon(imageVector = Icons.Rounded.Thermostat, contentDescription = null, modifier = Modifier.size(18.dp))
+            Spacer(modifier = Modifier.size(8.dp))
+            Text(
+                text = "Ressenti proche de la température",
+                style = MaterialTheme.typography.bodySmall,
+                color = LocalContentColor.current.copy(alpha = 0.80f)
             )
         }
-
-        if (weather.hourly.isNotEmpty()) {
-            GlassCard(visual = visual) { HourlyRow(hourly = weather.hourly) }
-        }
-
-        if (weather.daily.isNotEmpty()) {
-            GlassCard(visual = visual) { DailyList(daily = weather.daily) }
-        }
-    }
-}
-
-@Composable
-private fun MainWeatherCard(
-    city: String,
-    temp: Int,
-    description: String
-) {
-    Text(text = city, style = MaterialTheme.typography.headlineSmall)
-
-    Spacer(modifier = Modifier.height(10.dp))
-
-    Row(verticalAlignment = Alignment.CenterVertically) {
-        Icon(imageVector = Icons.Rounded.Thermostat, contentDescription = null, modifier = Modifier.size(22.dp))
-        Spacer(modifier = Modifier.size(8.dp))
-        Text(
-            text = stringResource(Res.string.temp_c, temp),
-            style = MaterialTheme.typography.displaySmall
-        )
-    }
-
-    Spacer(modifier = Modifier.height(8.dp))
-
-    Row(verticalAlignment = Alignment.CenterVertically) {
-        Icon(imageVector = Icons.Rounded.Cloud, contentDescription = null, modifier = Modifier.size(20.dp))
-        Spacer(modifier = Modifier.size(8.dp))
-        Text(text = description, style = MaterialTheme.typography.bodyLarge)
     }
 }
 
@@ -442,6 +498,41 @@ private fun DailyRow(item: DailyForecast) {
 }
 
 /* ---------------------------
+   Icônes météo dynamiques
+   --------------------------- */
+
+private fun mainWeatherIconFor(visual: WeatherVisual, weatherCode: Int): ImageVector {
+    // Priorité au code météo (plus fiable), sinon on utilise le visual
+    return when {
+        isThunderstormCode(weatherCode) -> Icons.Rounded.Bolt
+        isSnowCode(weatherCode) -> Icons.Rounded.AcUnit
+        isRainCode(weatherCode) -> Icons.Rounded.Umbrella
+        isCloudyCode(weatherCode) -> Icons.Rounded.Cloud
+        isSunnyCode(weatherCode) -> Icons.Rounded.WbSunny
+        else -> when (visual) {
+            WeatherVisual.Sunny -> Icons.Rounded.WbSunny
+            WeatherVisual.Cloudy -> Icons.Rounded.Cloud
+            WeatherVisual.Rainy -> Icons.Rounded.Umbrella
+            WeatherVisual.Stormy -> Icons.Rounded.Bolt
+            WeatherVisual.Snowy -> Icons.Rounded.AcUnit
+            WeatherVisual.Default -> Icons.Rounded.Cloud
+        }
+    }
+}
+
+private fun smallWeatherIconFor(visual: WeatherVisual, weatherCode: Int): ImageVector {
+    // Version “petite” (tu peux changer si tu veux un autre style)
+    return mainWeatherIconFor(visual, weatherCode)
+}
+
+// Open-Meteo weather code (simplifié)
+private fun isSunnyCode(code: Int): Boolean = code == 0
+private fun isCloudyCode(code: Int): Boolean = code in listOf(1, 2, 3, 45, 48)
+private fun isRainCode(code: Int): Boolean = code in 51..67 || code in 80..82
+private fun isSnowCode(code: Int): Boolean = code in 71..77 || code in 85..86
+private fun isThunderstormCode(code: Int): Boolean = code in 95..99
+
+/* ---------------------------
    Style météo (Apple-like)
    --------------------------- */
 
@@ -519,8 +610,8 @@ private fun backgroundGradientFor(visual: WeatherVisual): Brush {
 
         WeatherVisual.Default -> Brush.verticalGradient(
             colors = listOf(
-                MeteoColors.SkyBlue,
-                MeteoColors.White
+                MeteoColors.SkyBlue.copy(alpha = 0.70f),
+                MeteoColors.LightGray
             )
         )
     }
