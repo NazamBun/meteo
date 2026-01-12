@@ -24,15 +24,24 @@ class WeatherViewModel(
     private val _uiState = MutableStateFlow<WeatherUiState>(WeatherUiState.Loading)
     val uiState: StateFlow<WeatherUiState> = _uiState.asStateFlow()
 
+    // ✅ La ville en cours (utile pour Favoris)
+    private val _currentCity = MutableStateFlow<City?>(null)
+    val currentCity: StateFlow<City?> = _currentCity.asStateFlow()
+
     fun loadDefaultCity() {
-        loadWeather(
+        val paris = City(
+            name = "Paris",
+            country = "France",
+            admin1 = "Île-de-France",
             latitude = 48.8566,
-            longitude = 2.3522,
-            cityName = "Paris"
+            longitude = 2.3522
         )
+        loadCity(paris)
     }
 
     fun loadCity(city: City) {
+        _currentCity.value = city
+
         loadWeather(
             latitude = city.latitude,
             longitude = city.longitude,
@@ -44,9 +53,6 @@ class WeatherViewModel(
         loadDefaultCity()
     }
 
-    /**
-     * cityName a une valeur par défaut -> évite les soucis si un appel ancien existe.
-     */
     private fun loadWeather(
         latitude: Double,
         longitude: Double,

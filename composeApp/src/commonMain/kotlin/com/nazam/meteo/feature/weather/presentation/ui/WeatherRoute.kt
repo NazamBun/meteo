@@ -17,17 +17,16 @@ import com.nazam.meteo.feature.weather.presentation.viewmodel.WeatherViewModel
 
 @Composable
 fun WeatherRoute() {
-    // Pas de DI : on branche à la main (simple et clair).
-
+    // Pas de DI ici : on branche à la main (simple et lisible).
     val client = remember { createHttpClient() }
 
-    // Weather API
+    // Weather
     val weatherApi = remember { OpenMeteoApi(client) }
     val weatherRepository = remember { WeatherRepositoryImpl(weatherApi) }
     val getWeatherUseCase = remember { GetWeatherUseCase(weatherRepository) }
     val weatherViewModel = remember { WeatherViewModel(getWeatherUseCase) }
 
-    // Geocoding API
+    // City search
     val geocodingApi = remember { OpenMeteoGeocodingApi(client) }
     val cityRepository = remember { CityRepositoryImpl(geocodingApi) }
     val searchCityUseCase = remember { SearchCityUseCase(cityRepository) }
@@ -46,7 +45,6 @@ fun WeatherRoute() {
         onSearchQueryChange = { citySearchViewModel.onQueryChange(it) },
         onSearchClick = { citySearchViewModel.search() },
         onCitySelected = { city ->
-            // Quand l'utilisateur choisit une ville → on charge la météo
             weatherViewModel.loadCity(city)
             citySearchViewModel.clearResults()
         },
