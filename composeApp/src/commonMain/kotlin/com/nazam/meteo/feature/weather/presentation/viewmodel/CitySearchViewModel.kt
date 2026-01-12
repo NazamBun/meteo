@@ -7,6 +7,7 @@ import com.nazam.meteo.core.result.AppResult
 import com.nazam.meteo.core.ui.UiText
 import com.nazam.meteo.feature.weather.domain.usecase.SearchCityUseCase
 import com.nazam.meteo.feature.weather.presentation.model.CitySearchUiState
+import kotlinx.coroutines.FlowPreview
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.StateFlow
 import kotlinx.coroutines.flow.asStateFlow
@@ -23,10 +24,9 @@ import meteo.composeapp.generated.resources.error_unknown
 /**
  * ViewModel de recherche de ville.
  *
- * Objectif UX :
+ * UX :
  * - auto-complétion quand l'utilisateur tape
- * - "debounce" pour éviter trop d'appels réseau
- * - annule l'ancienne recherche si on retape (collectLatest)
+ * - debounce pour éviter trop d'appels réseau
  */
 class CitySearchViewModel(
     private val searchCityUseCase: SearchCityUseCase
@@ -43,7 +43,6 @@ class CitySearchViewModel(
         _uiState.update {
             it.copy(
                 query = value,
-                // on nettoie l'erreur dès qu'on retape
                 errorMessage = null
             )
         }
@@ -59,10 +58,6 @@ class CitySearchViewModel(
         }
     }
 
-    /**
-     * Bouton "Chercher" (optionnel) :
-     * - utile si tu veux forcer une recherche immédiate.
-     */
     fun search() {
         val query = _uiState.value.query.trim()
         if (query.isBlank()) return
@@ -94,21 +89,20 @@ class CitySearchViewModel(
         }
     }
 
+    @OptIn(FlowPreview::class) // ✅ pour debounce()
     private fun observeQueryForAutoComplete() {
         viewModelScope.launch {
             _uiState
                 .map { it.query.trim() }
                 .distinctUntilChanged()
-                .debounce(350) // ✅ attend un peu après la dernière lettre
+                .debounce(350)
                 .collect { query ->
 
-                    // Si vide -> on efface tout
                     if (query.isBlank()) {
                         clearResults()
                         return@collect
                     }
 
-                    // Si trop court -> on efface les suggestions (UseCase renverra aussi empty)
                     if (query.length < 2) {
                         _uiState.update {
                             it.copy(
@@ -120,13 +114,8 @@ class CitySearchViewModel(
                         return@collect
                     }
 
-                    // Lance la recherche auto
                     _uiState.update { it.copy(isLoading = true, errorMessage = null) }
 
-                    // IMPORTANT :
-                    // - comme on est dans un collect "simple", si tu veux annuler en plein vol,
-                    //   on fait la recherche dans un "launch" séparé ET on gère l'état proprement.
-                    // Ici, plus simple : on appelle le use case direct, et le debounce + distinct limitent déjà bien.
                     when (val result = searchCityUseCase.execute(query)) {
                         is AppResult.Success -> {
                             _uiState.update {
