@@ -71,8 +71,6 @@ import androidx.compose.ui.geometry.Size
 import androidx.compose.ui.graphics.Brush
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.graphics.drawscope.Fill
-import androidx.compose.ui.graphics.drawscope.Stroke
-import androidx.compose.ui.graphics.drawscope.rotate
 import androidx.compose.ui.graphics.vector.ImageVector
 import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.unit.dp
@@ -100,7 +98,6 @@ import meteo.composeapp.generated.resources.search_title
 import meteo.composeapp.generated.resources.searching
 import meteo.composeapp.generated.resources.temp_c
 import org.jetbrains.compose.resources.stringResource
-import kotlin.math.max
 
 @Composable
 fun WeatherScreen(
@@ -123,15 +120,15 @@ fun WeatherScreen(
     }
 
     val palette = paletteFor(visual)
+    val backgroundBrush = radialBackgroundFor(palette, changeProgress.value)
     val contentColor = contentColorFor(visual)
 
     CompositionLocalProvider(LocalContentColor provides contentColor) {
-        Box(modifier = Modifier.fillMaxSize()) {
-            RadialBackground(
-                palette = palette,
-                progress = changeProgress.value
-            )
-
+        Box(
+            modifier = Modifier
+                .fillMaxSize()
+                .background(backgroundBrush)
+        ) {
             WeatherBackgroundEffects(
                 visual = visual,
                 progress = changeProgress.value
@@ -182,53 +179,16 @@ fun WeatherScreen(
                         }
 
                         if (weatherUiState.weather.hourly.isNotEmpty()) {
-                            item {
-                                GlassCard(visual = visual) {
-                                    HourlyRow(hourly = weatherUiState.weather.hourly)
-                                }
-                            }
+                            item { GlassCard(visual = visual) { HourlyRow(hourly = weatherUiState.weather.hourly) } }
                         }
 
                         if (weatherUiState.weather.daily.isNotEmpty()) {
-                            item {
-                                GlassCard(visual = visual) {
-                                    DailyList(daily = weatherUiState.weather.daily)
-                                }
-                            }
+                            item { GlassCard(visual = visual) { DailyList(daily = weatherUiState.weather.daily) } }
                         }
                     }
                 }
             }
         }
-    }
-}
-
-@Composable
-private fun RadialBackground(
-    palette: WeatherPalette,
-    progress: Float
-) {
-    Canvas(modifier = Modifier.fillMaxSize()) {
-        val p = progress.coerceIn(0f, 1f)
-
-        val center = Offset(
-            x = size.width * 0.50f,
-            y = size.height * (0.18f + 0.10f * (1f - p))
-        )
-
-        val radius = max(size.width, size.height) * 1.15f
-
-        val brush = Brush.radialGradient(
-            colors = listOf(
-                palette.c3.copy(alpha = 0.98f),
-                palette.c2.copy(alpha = 0.95f),
-                palette.c1.copy(alpha = 1.00f)
-            ),
-            center = center,
-            radius = radius
-        )
-
-        drawRect(brush = brush)
     }
 }
 
@@ -279,10 +239,7 @@ private fun SearchCardContent(
     Row(verticalAlignment = Alignment.CenterVertically) {
         Icon(imageVector = Icons.Rounded.Search, contentDescription = null)
         Spacer(modifier = Modifier.size(8.dp))
-        Text(
-            text = stringResource(Res.string.search_title),
-            style = MaterialTheme.typography.titleMedium
-        )
+        Text(text = stringResource(Res.string.search_title), style = MaterialTheme.typography.titleMedium)
     }
 
     Spacer(modifier = Modifier.height(12.dp))
@@ -408,7 +365,7 @@ private fun MainWeatherCard(
 
     val haloColor = haloColorFor(visual)
     val haloAlpha by animateFloatAsState(
-        targetValue = if (isDarkBackground(visual)) 1.00f else 0.90f,
+        targetValue = if (isDarkBackground(visual)) 1.00f else 0.85f,
         animationSpec = tween(450),
         label = "HaloAlpha"
     )
@@ -426,10 +383,10 @@ private fun MainWeatherCard(
             verticalAlignment = Alignment.CenterVertically
         ) {
             Box(
-                modifier = Modifier.size(104.dp),
+                modifier = Modifier.size(100.dp),
                 contentAlignment = Alignment.Center
             ) {
-                GlowHaloUltra(color = haloColor, alpha = haloAlpha)
+                GlowHaloStrong(color = haloColor, alpha = haloAlpha)
 
                 AnimatedContent(
                     targetState = icon,
@@ -442,7 +399,7 @@ private fun MainWeatherCard(
                     Icon(
                         imageVector = targetIcon,
                         contentDescription = null,
-                        modifier = Modifier.size(84.dp)
+                        modifier = Modifier.size(82.dp)
                     )
                 }
             }
@@ -487,7 +444,7 @@ private fun MainWeatherCard(
 }
 
 @Composable
-private fun GlowHaloUltra(
+private fun GlowHaloStrong(
     color: Color,
     alpha: Float
 ) {
@@ -498,11 +455,11 @@ private fun GlowHaloUltra(
                 Brush.radialGradient(
                     colors = listOf(
                         color.copy(alpha = 0.00f),
-                        color.copy(alpha = 0.10f * alpha),
-                        color.copy(alpha = 0.22f * alpha),
+                        color.copy(alpha = 0.12f * alpha),
+                        color.copy(alpha = 0.26f * alpha),
                         color.copy(alpha = 0.00f)
                     ),
-                    radius = 360f
+                    radius = 320f
                 )
             )
     )
@@ -514,10 +471,10 @@ private fun GlowHaloUltra(
                 Brush.radialGradient(
                     colors = listOf(
                         color.copy(alpha = 0.00f),
-                        color.copy(alpha = 0.24f * alpha),
+                        color.copy(alpha = 0.22f * alpha),
                         color.copy(alpha = 0.00f)
                     ),
-                    radius = 230f
+                    radius = 200f
                 )
             )
     )
@@ -528,24 +485,10 @@ private fun GlowHaloUltra(
             .background(
                 Brush.radialGradient(
                     colors = listOf(
-                        color.copy(alpha = 0.62f * alpha),
+                        color.copy(alpha = 0.55f * alpha),
                         color.copy(alpha = 0.00f)
                     ),
-                    radius = 110f
-                )
-            )
-    )
-
-    Box(
-        modifier = Modifier
-            .fillMaxSize()
-            .background(
-                Brush.radialGradient(
-                    colors = listOf(
-                        Color.White.copy(alpha = 0.35f * alpha),
-                        Color.White.copy(alpha = 0.00f)
-                    ),
-                    radius = 70f
+                    radius = 95f
                 )
             )
     )
@@ -627,6 +570,8 @@ private fun DailyRow(item: DailyForecast) {
     }
 }
 
+/* Background effects */
+
 @Composable
 private fun WeatherBackgroundEffects(
     visual: WeatherVisual,
@@ -661,49 +606,49 @@ private fun WeatherBackgroundEffects(
         val h = size.height
 
         if (visual == WeatherVisual.Cloudy || visual == WeatherVisual.Rainy || visual == WeatherVisual.Stormy) {
-            val cloudColor = if (isDarkBackground(visual)) {
-                Color.White.copy(alpha = 0.10f * baseAlpha)
+            val baseCloudAlpha = if (isDarkBackground(visual)) {
+                0.16f * baseAlpha
             } else {
-                Color.White.copy(alpha = 0.18f * baseAlpha)
+                0.22f * baseAlpha
             }
 
             val dx = w * cloudShift
 
-            drawSoftCloud(
-                topLeft = Offset(w * 0.18f + dx, h * 0.16f),
-                size = Size(w * 0.90f, h * 0.18f),
-                color = cloudColor
+            drawRealisticCloud(
+                topLeft = Offset(w * 0.16f + dx, h * 0.16f),
+                size = Size(w * 0.92f, h * 0.18f),
+                alpha = baseCloudAlpha,
+                isDark = isDarkBackground(visual)
             )
-            drawSoftCloud(
-                topLeft = Offset(w * 0.03f - dx, h * 0.36f),
+            drawRealisticCloud(
+                topLeft = Offset(w * 0.02f - dx, h * 0.36f),
                 size = Size(w * 0.98f, h * 0.20f),
-                color = cloudColor.copy(alpha = cloudColor.alpha * 0.85f)
+                alpha = baseCloudAlpha * 0.90f,
+                isDark = isDarkBackground(visual)
             )
-            drawSoftCloud(
+            drawRealisticCloud(
                 topLeft = Offset(w * 0.22f + dx * 0.7f, h * 0.60f),
-                size = Size(w * 0.84f, h * 0.16f),
-                color = cloudColor.copy(alpha = cloudColor.alpha * 0.70f)
+                size = Size(w * 0.82f, h * 0.16f),
+                alpha = baseCloudAlpha * 0.78f,
+                isDark = isDarkBackground(visual)
             )
         }
 
         if (visual == WeatherVisual.Stormy) {
-            val starBase = MeteoColors.SunYellow.copy(alpha = 0.42f * baseAlpha)
+            val starBase = MeteoColors.SunYellow.copy(alpha = 0.40f * baseAlpha)
 
             val stars = listOf(
-                Offset(w * 0.10f, h * 0.10f),
-                Offset(w * 0.20f, h * 0.18f),
-                Offset(w * 0.34f, h * 0.12f),
-                Offset(w * 0.48f, h * 0.20f),
-                Offset(w * 0.62f, h * 0.14f),
-                Offset(w * 0.76f, h * 0.22f),
-                Offset(w * 0.88f, h * 0.12f),
-                Offset(w * 0.70f, h * 0.32f),
-                Offset(w * 0.52f, h * 0.30f)
+                Offset(w * 0.15f, h * 0.12f),
+                Offset(w * 0.32f, h * 0.20f),
+                Offset(w * 0.55f, h * 0.14f),
+                Offset(w * 0.74f, h * 0.24f),
+                Offset(w * 0.86f, h * 0.10f),
+                Offset(w * 0.64f, h * 0.32f)
             )
 
             stars.forEachIndexed { index, p ->
-                val pulse = (0.55f + 0.45f * twinkle) * (0.90f + index * 0.01f)
-                val r = 2.4f + (index % 4) * 0.45f
+                val pulse = (0.55f + 0.45f * twinkle) * (0.88f + index * 0.02f)
+                val r = 2.6f + index * 0.35f
 
                 drawCircle(
                     color = starBase.copy(alpha = starBase.alpha * pulse),
@@ -712,69 +657,95 @@ private fun WeatherBackgroundEffects(
                 )
 
                 drawCircle(
-                    color = starBase.copy(alpha = starBase.alpha * 0.25f * pulse),
-                    radius = r * 2.8f,
+                    color = starBase.copy(alpha = starBase.alpha * 0.30f * pulse),
+                    radius = r * 2.6f,
                     center = p
-                )
-
-                drawStarCross(
-                    center = p,
-                    sizePx = r * 3.2f,
-                    color = starBase.copy(alpha = starBase.alpha * 0.35f * pulse),
-                    rotationDeg = (index * 13f) % 180f
                 )
             }
         }
     }
 }
 
-private fun androidx.compose.ui.graphics.drawscope.DrawScope.drawStarCross(
-    center: Offset,
-    sizePx: Float,
-    color: Color,
-    rotationDeg: Float
-) {
-    rotate(degrees = rotationDeg, pivot = center) {
-        val half = sizePx / 2f
-        drawLine(
-            color = color,
-            start = Offset(center.x - half, center.y),
-            end = Offset(center.x + half, center.y),
-            strokeWidth = 1.3f,
-            cap = Stroke.DefaultCap
-        )
-        drawLine(
-            color = color,
-            start = Offset(center.x, center.y - half),
-            end = Offset(center.x, center.y + half),
-            strokeWidth = 1.3f,
-            cap = Stroke.DefaultCap
-        )
-    }
-}
-
-private fun androidx.compose.ui.graphics.drawscope.DrawScope.drawSoftCloud(
+/**
+ * Nuage plus réaliste (toujours simple) :
+ * - 2 couches (ombre + lumière)
+ * - dégradé vertical dans la couche de lumière
+ * - petit highlight en haut
+ */
+private fun androidx.compose.ui.graphics.drawscope.DrawScope.drawRealisticCloud(
     topLeft: Offset,
     size: Size,
-    color: Color
+    alpha: Float,
+    isDark: Boolean
 ) {
     val x = topLeft.x
     val y = topLeft.y
     val w = size.width
     val h = size.height
 
+    val base = if (isDark) Color.White.copy(alpha = alpha) else Color.White.copy(alpha = alpha)
+    val shadow = if (isDark) Color.Black.copy(alpha = 0.10f * alpha) else Color.Black.copy(alpha = 0.08f * alpha)
+
+    val highlightTop = Color.White.copy(alpha = (alpha * if (isDark) 0.75f else 0.90f).coerceIn(0f, 1f))
+    val highlightBottom = Color.White.copy(alpha = (alpha * if (isDark) 0.25f else 0.35f).coerceIn(0f, 1f))
+
+    val mainBrush = Brush.linearGradient(
+        colors = listOf(highlightTop, highlightBottom),
+        start = Offset(x, y),
+        end = Offset(x, y + h)
+    )
+
+    val shadowBrush = Brush.linearGradient(
+        colors = listOf(shadow.copy(alpha = shadow.alpha * 0.0f), shadow),
+        start = Offset(x, y + h * 0.35f),
+        end = Offset(x, y + h)
+    )
+
+    val baseRectTop = y + h * 0.42f
+    val rectHeight = h * 0.52f
+
+    // Ombre douce (fond)
     drawRoundRect(
-        color = color,
-        topLeft = Offset(x, y + h * 0.35f),
-        size = Size(w, h * 0.55f),
+        brush = shadowBrush,
+        topLeft = Offset(x, baseRectTop + h * 0.06f),
+        size = Size(w, rectHeight),
         cornerRadius = CornerRadius(h, h),
         style = Fill
     )
 
-    drawCircle(color = color, radius = h * 0.34f, center = Offset(x + w * 0.24f, y + h * 0.46f))
-    drawCircle(color = color, radius = h * 0.44f, center = Offset(x + w * 0.46f, y + h * 0.36f))
-    drawCircle(color = color, radius = h * 0.32f, center = Offset(x + w * 0.68f, y + h * 0.49f))
+    // Base principale avec dégradé
+    drawRoundRect(
+        brush = mainBrush,
+        topLeft = Offset(x, baseRectTop),
+        size = Size(w, rectHeight),
+        cornerRadius = CornerRadius(h, h),
+        style = Fill
+    )
+
+    // Bulles du nuage (2 couches : ombre + lumière)
+    fun bubble(cx: Float, cy: Float, r: Float) {
+        drawCircle(color = shadow, radius = r * 1.05f, center = Offset(cx + r * 0.06f, cy + r * 0.10f))
+        drawCircle(brush = mainBrush, radius = r, center = Offset(cx, cy))
+    }
+
+    val cy = y + h * 0.52f
+    bubble(x + w * 0.22f, cy, h * 0.30f)
+    bubble(x + w * 0.40f, y + h * 0.42f, h * 0.38f)
+    bubble(x + w * 0.58f, y + h * 0.50f, h * 0.33f)
+    bubble(x + w * 0.74f, y + h * 0.55f, h * 0.26f)
+
+    // Petit highlight en haut (fine ligne douce)
+    val highlightLine = Color.White.copy(alpha = (alpha * 0.20f).coerceIn(0f, 1f))
+    drawRoundRect(
+        color = highlightLine,
+        topLeft = Offset(x + w * 0.10f, y + h * 0.40f),
+        size = Size(w * 0.80f, h * 0.06f),
+        cornerRadius = CornerRadius(h, h),
+        style = Fill
+    )
 }
+
+/* Weather icons */
 
 private fun mainWeatherIconFor(visual: WeatherVisual, weatherCode: Int): ImageVector {
     return when {
@@ -804,7 +775,11 @@ private fun isRainCode(code: Int): Boolean = code in 51..67 || code in 80..82
 private fun isSnowCode(code: Int): Boolean = code in 71..77 || code in 85..86
 private fun isThunderstormCode(code: Int): Boolean = code in 95..99
 
-private enum class WeatherVisual { Sunny, Cloudy, Rainy, Stormy, Snowy, Default }
+/* Visual + colors */
+
+private enum class WeatherVisual {
+    Sunny, Cloudy, Rainy, Stormy, Snowy, Default
+}
 
 private fun weatherVisualFromDescription(description: String): WeatherVisual {
     val d = description.lowercase()
@@ -843,11 +818,26 @@ private fun paletteFor(visual: WeatherVisual): WeatherPalette {
     }
 }
 
+private fun radialBackgroundFor(palette: WeatherPalette, progress: Float): Brush {
+    val p = progress.coerceIn(0f, 1f)
+    val radius = 1400f + (1f - p) * 200f
+
+    return Brush.radialGradient(
+        colors = listOf(
+            palette.c3.copy(alpha = 0.98f),
+            palette.c2.copy(alpha = 0.95f),
+            palette.c1.copy(alpha = 1.00f)
+        ),
+        center = Offset.Unspecified,
+        radius = radius
+    )
+}
+
 private fun haloColorFor(visual: WeatherVisual): Color {
     return when (visual) {
         WeatherVisual.Sunny -> MeteoColors.SunYellow
         WeatherVisual.Cloudy -> MeteoColors.SkyBlue
-        WeatherVisual.Rainy -> MeteoColors.DeepBlue
+        WeatherVisual.Rainy -> MeteoColors.SkyBlue
         WeatherVisual.Stormy -> MeteoColors.SunYellow
         WeatherVisual.Snowy -> MeteoColors.SkyBlue
         WeatherVisual.Default -> MeteoColors.SkyBlue
