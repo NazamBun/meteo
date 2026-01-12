@@ -1,9 +1,19 @@
 package com.nazam.meteo.feature.weather.presentation.ui
 
+import androidx.compose.animation.AnimatedContent
+import androidx.compose.animation.core.Animatable
+import androidx.compose.animation.core.Spring
+import androidx.compose.animation.core.spring
+import androidx.compose.animation.fadeIn
+import androidx.compose.animation.fadeOut
+import androidx.compose.animation.scaleIn
+import androidx.compose.animation.scaleOut
+import androidx.compose.animation.togetherWith
 import androidx.compose.foundation.BorderStroke
 import androidx.compose.foundation.background
 import androidx.compose.foundation.clickable
 import androidx.compose.foundation.layout.Arrangement
+import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.Spacer
@@ -44,12 +54,20 @@ import androidx.compose.material3.OutlinedTextField
 import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.CompositionLocalProvider
+import androidx.compose.runtime.LaunchedEffect
+import androidx.compose.runtime.getValue
+import androidx.compose.runtime.mutableStateOf
+import androidx.compose.runtime.remember
+import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
+import androidx.compose.ui.draw.drawBehind
+import androidx.compose.ui.geometry.Offset
 import androidx.compose.ui.graphics.Brush
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.graphics.vector.ImageVector
 import androidx.compose.ui.text.style.TextOverflow
+import androidx.compose.ui.unit.IntSize
 import androidx.compose.ui.unit.dp
 import com.nazam.meteo.core.ui.theme.MeteoColors
 import com.nazam.meteo.feature.weather.domain.model.City
@@ -90,22 +108,63 @@ fun WeatherScreen(
         else -> WeatherVisual.Default
     }
 
-    val backgroundBrush = backgroundGradientFor(visual)
     val contentColor = contentColorFor(visual)
 
-    // Texte + icônes lisibles partout
+    // On récupère la taille de l'écran pour calculer un vrai radial gradient
+    var screenSize by remember { mutableStateOf(IntSize(1, 1)) }
+
+    // ✅ Animation légère quand la météo change :
+    // on fait “respirer” le fond (petit zoom du radial)
+    val backgroundPulse = remember { Animatable(0f) }
+    LaunchedEffect(visual) {
+        backgroundPulse.snapTo(0f)
+        backgroundPulse.animateTo(
+            targetValue = 1f,
+            animationSpec = spring(stiffness = Spring.StiffnessLow)
+        )
+    }
+
+    val backgroundBrush = radialBackgroundGradientFor(
+        visual = visual,
+        size = screenSize,
+        pulse = backgroundPulse.value
+    )
+
     CompositionLocalProvider(LocalContentColor provides contentColor) {
         LazyColumn(
             modifier = Modifier
                 .fillMaxSize()
-                .background(backgroundBrush)
+                .drawBehind {
+                    // Fond radial dessiné derrière tout
+                    drawRect(brush = backgroundBrush)
+                }
                 .windowInsetsPadding(WindowInsets.safeDrawing)
                 .padding(16.dp),
             verticalArrangement = Arrangement.spacedBy(16.dp)
         ) {
             item {
-                Header()
+                // On capte la taille ici (LazyColumn prend tout l'écran)
+                Box(
+                    modifier = Modifier
+                        .fillMaxWidth()
+                        .height(0.dp)
+                        .drawBehind { /* rien */ }
+                )
             }
+
+            item {
+                // Hack simple : on obtient la size via drawBehind
+                Box(
+                    modifier = Modifier
+                        .fillMaxWidth()
+                        .height(1.dp)
+                        .drawBehind {
+                            screenSize = IntSize(size.width.toInt(), size.height.toInt())
+                        }
+                )
+            }
+
+            item { Header() }
 
             item {
                 GlassCard(visual = visual) {
@@ -120,9 +179,7 @@ fun WeatherScreen(
 
             when (weatherUiState) {
                 WeatherUiState.Loading -> {
-                    item {
-                        GlassCard(visual = visual) { LoadingContent() }
-                    }
+                    item { GlassCard(visual = visual) { LoadingContent() } }
                 }
 
                 is WeatherUiState.Error -> {
@@ -137,7 +194,6 @@ fun WeatherScreen(
                 }
 
                 is WeatherUiState.Success -> {
-                    // Carte principale (grosse, mise en avant)
                     item {
                         GlassCard(visual = visual) {
                             MainWeatherCard(
@@ -147,18 +203,12 @@ fun WeatherScreen(
                         }
                     }
 
-                    // Heure par heure
                     if (weatherUiState.weather.hourly.isNotEmpty()) {
-                        item {
-                            GlassCard(visual = visual) { HourlyRow(hourly = weatherUiState.weather.hourly) }
-                        }
+                        item { GlassCard(visual = visual) { HourlyRow(hourly = weatherUiState.weather.hourly) } }
                     }
 
-                    // Prévisions
                     if (weatherUiState.weather.daily.isNotEmpty()) {
-                        item {
-                            GlassCard(visual = visual) { DailyList(daily = weatherUiState.weather.daily) }
-                        }
+                        item { GlassCard(visual = visual) { DailyList(daily = weatherUiState.weather.daily) } }
                     }
                 }
             }
@@ -188,17 +238,8 @@ private fun GlassCard(
 ) {
     val isDark = isDarkBackground(visual)
 
-    val cardColor = if (isDark) {
-        Color.White.copy(alpha = 0.12f)
-    } else {
-        Color.White.copy(alpha = 0.55f)
-    }
-
-    val borderColor = if (isDark) {
-        Color.White.copy(alpha = 0.18f)
-    } else {
-        Color.White.copy(alpha = 0.25f)
-    }
+    val cardColor = if (isDark) Color.White.copy(alpha = 0.12f) else Color.White.copy(alpha = 0.55f)
+    val borderColor = if (isDark) Color.White.copy(alpha = 0.18f) else Color.White.copy(alpha = 0.25f)
 
     Card(
         modifier = Modifier.fillMaxWidth(),
@@ -259,10 +300,8 @@ private fun SearchCardContent(
             Icon(imageVector = Icons.Rounded.Search, contentDescription = null, modifier = Modifier.size(18.dp))
             Spacer(modifier = Modifier.size(8.dp))
             Text(
-                text = if (uiState.isLoading)
-                    stringResource(Res.string.searching)
-                else
-                    stringResource(Res.string.search_button)
+                text = if (uiState.isLoading) stringResource(Res.string.searching)
+                else stringResource(Res.string.search_button)
             )
         }
     }
@@ -272,11 +311,9 @@ private fun SearchCardContent(
         Text(text = msg.asString(), style = MaterialTheme.typography.bodyMedium)
     }
 
-    // IMPORTANT : pas de LazyColumn ici (sinon scroll dans scroll)
     if (uiState.results.isNotEmpty()) {
         Spacer(modifier = Modifier.height(12.dp))
         Text(text = stringResource(Res.string.results_title), style = MaterialTheme.typography.titleSmall)
-
         Spacer(modifier = Modifier.height(8.dp))
 
         Column(verticalArrangement = Arrangement.spacedBy(8.dp)) {
@@ -348,10 +385,10 @@ private fun ErrorContent(
 }
 
 /**
- * Carte principale :
- * - Icône météo dynamique (grosse)
- * - Temp très visible
- * - Ville + description bien mises en avant
+ * ✅ 3 choses ici :
+ * 1) Icône météo dynamique
+ * 2) GROS halo lumineux derrière l’icône
+ * 3) Petite animation (scale + fade) quand météo change
  */
 @Composable
 private fun MainWeatherCard(
@@ -360,8 +397,20 @@ private fun MainWeatherCard(
 ) {
     val icon = mainWeatherIconFor(visual, weather.weatherCode)
 
-    Column(verticalArrangement = Arrangement.spacedBy(10.dp)) {
-        // Ligne du haut : ville
+    // Clé qui change quand la météo change
+    val animationKey = "${weather.weatherCode}_${visual.name}_${weather.temperatureC}"
+
+    // Halo qui “pop” à chaque changement
+    val haloPulse = remember { Animatable(0f) }
+    LaunchedEffect(animationKey) {
+        haloPulse.snapTo(0f)
+        haloPulse.animateTo(
+            targetValue = 1f,
+            animationSpec = spring(stiffness = Spring.StiffnessLow)
+        )
+    }
+
+    Column(verticalArrangement = Arrangement.spacedBy(12.dp)) {
         Text(
             text = weather.city,
             style = MaterialTheme.typography.headlineSmall,
@@ -369,26 +418,32 @@ private fun MainWeatherCard(
             overflow = TextOverflow.Ellipsis
         )
 
-        // Ligne centrale : grosse icône + grosse température
         Row(
             modifier = Modifier.fillMaxWidth(),
             verticalAlignment = Alignment.CenterVertically
         ) {
-            Icon(
-                imageVector = icon,
-                contentDescription = null,
-                modifier = Modifier.size(72.dp) // ✅ plus grand
-            )
+            // Icône + halo
+            AnimatedContent(
+                targetState = animationKey,
+                transitionSpec = {
+                    (fadeIn() + scaleIn(initialScale = 0.92f)) togetherWith
+                            (fadeOut() + scaleOut(targetScale = 1.02f))
+                }
+            ) {
+                WeatherIconWithHalo(
+                    icon = icon,
+                    visual = visual,
+                    pulse = haloPulse.value
+                )
+            }
 
-            Spacer(modifier = Modifier.size(14.dp))
+            Spacer(modifier = Modifier.size(16.dp))
 
-            Column {
+            Column(modifier = Modifier.weight(1f)) {
                 Text(
                     text = stringResource(Res.string.temp_c, weather.temperatureC),
-                    style = MaterialTheme.typography.displayMedium // ✅ plus gros
+                    style = MaterialTheme.typography.displayMedium
                 )
-
-                Spacer(modifier = Modifier.height(4.dp))
 
                 Row(verticalAlignment = Alignment.CenterVertically) {
                     Icon(
@@ -408,7 +463,6 @@ private fun MainWeatherCard(
             }
         }
 
-        // Petit détail “thermostat” (optionnel mais sympa)
         Row(verticalAlignment = Alignment.CenterVertically) {
             Icon(imageVector = Icons.Rounded.Thermostat, contentDescription = null, modifier = Modifier.size(18.dp))
             Spacer(modifier = Modifier.size(8.dp))
@@ -418,6 +472,51 @@ private fun MainWeatherCard(
                 color = LocalContentColor.current.copy(alpha = 0.80f)
             )
         }
+    }
+}
+
+@Composable
+private fun WeatherIconWithHalo(
+    icon: ImageVector,
+    visual: WeatherVisual,
+    pulse: Float
+) {
+    val haloColor = haloColorFor(visual)
+
+    // pulse : 0 -> 1 (plus lumineux au changement)
+    val alpha = 0.35f + (0.25f * pulse)
+    val radiusFactor = 0.55f + (0.10f * pulse)
+
+    Box(
+        modifier = Modifier.size(110.dp),
+        contentAlignment = Alignment.Center
+    ) {
+        // Halo (radial) derrière
+        Box(
+            modifier = Modifier
+                .size(110.dp)
+                .drawBehind {
+                    val r = size.minDimension * radiusFactor
+                    drawCircle(
+                        brush = Brush.radialGradient(
+                            colors = listOf(
+                                haloColor.copy(alpha = alpha),
+                                haloColor.copy(alpha = 0.12f),
+                                Color.Transparent
+                            ),
+                            center = Offset(size.width / 2f, size.height / 2f),
+                            radius = r
+                        )
+                    )
+                }
+        )
+
+        // Icône très visible
+        Icon(
+            imageVector = icon,
+            contentDescription = null,
+            modifier = Modifier.size(86.dp)
+        )
     }
 }
 
@@ -460,7 +559,6 @@ private fun HourChip(hour: String, temp: Int) {
 @Composable
 private fun DailyList(daily: List<DailyForecast>) {
     Text(text = stringResource(Res.string.daily_title), style = MaterialTheme.typography.titleMedium)
-
     Spacer(modifier = Modifier.height(10.dp))
 
     Column(verticalArrangement = Arrangement.spacedBy(8.dp)) {
@@ -502,7 +600,6 @@ private fun DailyRow(item: DailyForecast) {
    --------------------------- */
 
 private fun mainWeatherIconFor(visual: WeatherVisual, weatherCode: Int): ImageVector {
-    // Priorité au code météo (plus fiable), sinon on utilise le visual
     return when {
         isThunderstormCode(weatherCode) -> Icons.Rounded.Bolt
         isSnowCode(weatherCode) -> Icons.Rounded.AcUnit
@@ -521,11 +618,9 @@ private fun mainWeatherIconFor(visual: WeatherVisual, weatherCode: Int): ImageVe
 }
 
 private fun smallWeatherIconFor(visual: WeatherVisual, weatherCode: Int): ImageVector {
-    // Version “petite” (tu peux changer si tu veux un autre style)
     return mainWeatherIconFor(visual, weatherCode)
 }
 
-// Open-Meteo weather code (simplifié)
 private fun isSunnyCode(code: Int): Boolean = code == 0
 private fun isCloudyCode(code: Int): Boolean = code in listOf(1, 2, 3, 45, 48)
 private fun isRainCode(code: Int): Boolean = code in 51..67 || code in 80..82
@@ -569,50 +664,80 @@ private fun contentColorFor(visual: WeatherVisual): Color {
     return if (isDarkBackground(visual)) Color.White else Color.Black
 }
 
-@Composable
-private fun backgroundGradientFor(visual: WeatherVisual): Brush {
+/**
+ * ✅ Dégradé RADIAL (pas vertical)
+ * pulse = petite animation légère pour donner un effet vivant.
+ */
+private fun radialBackgroundGradientFor(
+    visual: WeatherVisual,
+    size: IntSize,
+    pulse: Float
+): Brush {
+    val w = size.width.toFloat().coerceAtLeast(1f)
+    val h = size.height.toFloat().coerceAtLeast(1f)
+
+    // Centre un peu vers le haut (style Apple)
+    val center = Offset(w * 0.5f, h * 0.25f)
+
+    // Radius varie un peu avec pulse
+    val baseRadius = maxOf(w, h) * 0.95f
+    val radius = baseRadius * (1f + 0.06f * pulse)
+
+    val colors = when (visual) {
+        WeatherVisual.Sunny -> listOf(
+            MeteoColors.SunYellow.copy(alpha = 0.95f),
+            MeteoColors.SkyBlue.copy(alpha = 0.95f),
+            MeteoColors.White
+        )
+
+        WeatherVisual.Cloudy -> listOf(
+            MeteoColors.LightGray.copy(alpha = 0.98f),
+            MeteoColors.SkyBlue.copy(alpha = 0.55f),
+            MeteoColors.White
+        )
+
+        WeatherVisual.Rainy -> listOf(
+            MeteoColors.DarkGray.copy(alpha = 0.85f),
+            MeteoColors.DeepBlue.copy(alpha = 0.95f),
+            MeteoColors.StormBlue
+        )
+
+        WeatherVisual.Stormy -> listOf(
+            MeteoColors.StormBlue.copy(alpha = 0.95f),
+            MeteoColors.DarkGray.copy(alpha = 0.90f),
+            Color.Black
+        )
+
+        WeatherVisual.Snowy -> listOf(
+            MeteoColors.White,
+            MeteoColors.SkyBlue.copy(alpha = 0.35f),
+            MeteoColors.White
+        )
+
+        WeatherVisual.Default -> listOf(
+            MeteoColors.SkyBlue.copy(alpha = 0.85f),
+            MeteoColors.White,
+            MeteoColors.White
+        )
+    }
+
+    return Brush.radialGradient(
+        colors = colors,
+        center = center,
+        radius = radius
+    )
+}
+
+/**
+ * Couleur du halo selon météo (simple et joli)
+ */
+private fun haloColorFor(visual: WeatherVisual): Color {
     return when (visual) {
-        WeatherVisual.Sunny -> Brush.verticalGradient(
-            colors = listOf(
-                MeteoColors.SkyBlue,
-                MeteoColors.SkyBlue,
-                MeteoColors.SunYellow
-            )
-        )
-
-        WeatherVisual.Cloudy -> Brush.verticalGradient(
-            colors = listOf(
-                MeteoColors.LightGray,
-                MeteoColors.SkyBlue.copy(alpha = 0.65f)
-            )
-        )
-
-        WeatherVisual.Rainy -> Brush.verticalGradient(
-            colors = listOf(
-                MeteoColors.DeepBlue,
-                MeteoColors.DarkGray
-            )
-        )
-
-        WeatherVisual.Stormy -> Brush.verticalGradient(
-            colors = listOf(
-                MeteoColors.StormBlue,
-                MeteoColors.DarkGray
-            )
-        )
-
-        WeatherVisual.Snowy -> Brush.verticalGradient(
-            colors = listOf(
-                MeteoColors.White,
-                MeteoColors.SkyBlue.copy(alpha = 0.35f)
-            )
-        )
-
-        WeatherVisual.Default -> Brush.verticalGradient(
-            colors = listOf(
-                MeteoColors.SkyBlue.copy(alpha = 0.70f),
-                MeteoColors.LightGray
-            )
-        )
+        WeatherVisual.Sunny -> MeteoColors.SunYellow
+        WeatherVisual.Cloudy -> MeteoColors.SkyBlue
+        WeatherVisual.Rainy -> MeteoColors.DeepBlue
+        WeatherVisual.Stormy -> Color(0xFF7C4DFF) // violet (orage)
+        WeatherVisual.Snowy -> MeteoColors.SkyBlue
+        WeatherVisual.Default -> MeteoColors.SkyBlue
     }
 }
