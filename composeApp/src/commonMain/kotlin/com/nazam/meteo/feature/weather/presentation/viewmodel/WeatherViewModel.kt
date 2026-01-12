@@ -4,7 +4,6 @@ import androidx.lifecycle.ViewModel
 import androidx.lifecycle.viewModelScope
 import com.nazam.meteo.core.result.AppError
 import com.nazam.meteo.core.result.AppResult
-import com.nazam.meteo.core.ui.AppStrings
 import com.nazam.meteo.core.ui.UiText
 import com.nazam.meteo.feature.weather.domain.model.City
 import com.nazam.meteo.feature.weather.domain.usecase.GetWeatherUseCase
@@ -13,6 +12,10 @@ import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.StateFlow
 import kotlinx.coroutines.flow.asStateFlow
 import kotlinx.coroutines.launch
+import meteo.composeapp.generated.resources.Res
+import meteo.composeapp.generated.resources.error_city_not_found
+import meteo.composeapp.generated.resources.error_no_internet
+import meteo.composeapp.generated.resources.error_unknown
 
 class WeatherViewModel(
     private val getWeatherUseCase: GetWeatherUseCase
@@ -41,6 +44,9 @@ class WeatherViewModel(
         loadDefaultCity()
     }
 
+    /**
+     * cityName a une valeur par défaut -> évite les soucis si un appel ancien existe.
+     */
     private fun loadWeather(
         latitude: Double,
         longitude: Double,
@@ -49,29 +55,18 @@ class WeatherViewModel(
         _uiState.value = WeatherUiState.Loading
 
         viewModelScope.launch {
-            when (val result = getWeatherUseCase.execute(
-                latitude = latitude,
-                longitude = longitude,
-                cityName = cityName
-            )) {
-                is AppResult.Success -> {
-                    val finalCity = if (cityName.isBlank()) result.data.city else cityName
-                    val weather = result.data.copy(city = finalCity)
-                    _uiState.value = WeatherUiState.Success(weather)
-                }
-
-                is AppResult.Error -> {
-                    _uiState.value = WeatherUiState.Error(result.error.toUiText())
-                }
+            when (val result = getWeatherUseCase.execute(latitude, longitude, cityName)) {
+                is AppResult.Success -> _uiState.value = WeatherUiState.Success(result.data)
+                is AppResult.Error -> _uiState.value = WeatherUiState.Error(result.error.toUiText())
             }
         }
     }
 
     private fun AppError.toUiText(): UiText {
         return when (this) {
-            AppError.Network -> UiText.StringKey(AppStrings.Key.ErrorNoInternet)
-            AppError.NotFound -> UiText.StringKey(AppStrings.Key.ErrorCityNotFound)
-            is AppError.Unknown -> UiText.StringKey(AppStrings.Key.ErrorUnknown)
+            AppError.Network -> UiText.Resource(Res.string.error_no_internet)
+            AppError.NotFound -> UiText.Resource(Res.string.error_city_not_found)
+            is AppError.Unknown -> UiText.Resource(Res.string.error_unknown)
         }
     }
 }

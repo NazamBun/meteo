@@ -37,13 +37,29 @@ import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.unit.dp
-import com.nazam.meteo.core.ui.AppStrings
 import com.nazam.meteo.feature.weather.domain.model.City
 import com.nazam.meteo.feature.weather.domain.model.DailyForecast
 import com.nazam.meteo.feature.weather.domain.model.HourlyForecast
 import com.nazam.meteo.feature.weather.domain.model.Weather
 import com.nazam.meteo.feature.weather.presentation.model.CitySearchUiState
 import com.nazam.meteo.feature.weather.presentation.model.WeatherUiState
+import org.jetbrains.compose.resources.stringResource
+import meteo.composeapp.generated.resources.Res
+import meteo.composeapp.generated.resources.app_subtitle
+import meteo.composeapp.generated.resources.app_title
+import meteo.composeapp.generated.resources.daily_title
+import meteo.composeapp.generated.resources.hourly_title
+import meteo.composeapp.generated.resources.lat_lon
+import meteo.composeapp.generated.resources.loading
+import meteo.composeapp.generated.resources.max_temp_c
+import meteo.composeapp.generated.resources.min_temp_c
+import meteo.composeapp.generated.resources.results_title
+import meteo.composeapp.generated.resources.retry
+import meteo.composeapp.generated.resources.search_button
+import meteo.composeapp.generated.resources.search_hint
+import meteo.composeapp.generated.resources.search_title
+import meteo.composeapp.generated.resources.searching
+import meteo.composeapp.generated.resources.temp_c
 
 @Composable
 fun WeatherScreen(
@@ -87,11 +103,11 @@ fun WeatherScreen(
 private fun Header() {
     Column(verticalArrangement = Arrangement.spacedBy(4.dp)) {
         Text(
-            text = AppStrings.get(AppStrings.Key.AppTitle),
+            text = stringResource(Res.string.app_title),
             style = MaterialTheme.typography.headlineMedium
         )
         Text(
-            text = AppStrings.get(AppStrings.Key.AppSubtitle),
+            text = stringResource(Res.string.app_subtitle),
             style = MaterialTheme.typography.bodyMedium
         )
     }
@@ -118,7 +134,7 @@ private fun SearchCard(
                 Icon(imageVector = Icons.Rounded.Search, contentDescription = null)
                 Spacer(modifier = Modifier.size(8.dp))
                 Text(
-                    text = AppStrings.get(AppStrings.Key.SearchTitle),
+                    text = stringResource(Res.string.search_title),
                     style = MaterialTheme.typography.titleMedium
                 )
             }
@@ -128,10 +144,8 @@ private fun SearchCard(
                 onValueChange = onQueryChange,
                 modifier = Modifier.fillMaxWidth(),
                 singleLine = true,
-                label = { Text(AppStrings.get(AppStrings.Key.SearchHint)) },
-                leadingIcon = {
-                    Icon(imageVector = Icons.Rounded.LocationOn, contentDescription = null)
-                },
+                label = { Text(stringResource(Res.string.search_hint)) },
+                leadingIcon = { Icon(imageVector = Icons.Rounded.LocationOn, contentDescription = null) },
                 trailingIcon = {
                     if (uiState.query.isNotBlank()) {
                         IconButton(onClick = { onQueryChange("") }) {
@@ -154,22 +168,21 @@ private fun SearchCard(
                     )
                     Spacer(modifier = Modifier.size(8.dp))
                     Text(
-                        if (uiState.isLoading) AppStrings.get(AppStrings.Key.Searching)
-                        else AppStrings.get(AppStrings.Key.SearchButton)
+                        text = if (uiState.isLoading)
+                            stringResource(Res.string.searching)
+                        else
+                            stringResource(Res.string.search_button)
                     )
                 }
             }
 
             uiState.errorMessage?.let { msg ->
-                Text(
-                    text = msg.asString(),
-                    style = MaterialTheme.typography.bodyMedium
-                )
+                Text(text = msg.asString(), style = MaterialTheme.typography.bodyMedium)
             }
 
             if (uiState.results.isNotEmpty()) {
                 Text(
-                    text = AppStrings.get(AppStrings.Key.ResultsTitle),
+                    text = stringResource(Res.string.results_title),
                     style = MaterialTheme.typography.titleSmall
                 )
 
@@ -217,7 +230,7 @@ private fun CityRow(
                     overflow = TextOverflow.Ellipsis
                 )
                 Text(
-                    text = AppStrings.latLon(city.latitude, city.longitude),
+                    text = stringResource(Res.string.lat_lon, city.latitude, city.longitude),
                     style = MaterialTheme.typography.bodySmall,
                     maxLines = 1,
                     overflow = TextOverflow.Ellipsis
@@ -229,20 +242,14 @@ private fun CityRow(
 
 @Composable
 private fun LoadingCard() {
-    Card(
-        modifier = Modifier.fillMaxWidth(),
-        shape = RoundedCornerShape(16.dp)
-    ) {
+    Card(modifier = Modifier.fillMaxWidth(), shape = RoundedCornerShape(16.dp)) {
         Row(
             modifier = Modifier.fillMaxWidth().padding(16.dp),
             verticalAlignment = Alignment.CenterVertically
         ) {
             Icon(imageVector = Icons.Rounded.Cloud, contentDescription = null)
             Spacer(modifier = Modifier.size(10.dp))
-            Text(
-                text = AppStrings.get(AppStrings.Key.Loading),
-                style = MaterialTheme.typography.bodyLarge
-            )
+            Text(text = stringResource(Res.string.loading), style = MaterialTheme.typography.bodyLarge)
         }
     }
 }
@@ -252,10 +259,7 @@ private fun ErrorCard(
     message: String,
     onRetry: () -> Unit
 ) {
-    Card(
-        modifier = Modifier.fillMaxWidth(),
-        shape = RoundedCornerShape(16.dp)
-    ) {
+    Card(modifier = Modifier.fillMaxWidth(), shape = RoundedCornerShape(16.dp)) {
         Column(
             modifier = Modifier.fillMaxWidth().padding(16.dp),
             verticalArrangement = Arrangement.spacedBy(12.dp)
@@ -270,7 +274,7 @@ private fun ErrorCard(
                         modifier = Modifier.size(18.dp)
                     )
                     Spacer(modifier = Modifier.size(8.dp))
-                    Text(text = AppStrings.get(AppStrings.Key.Retry))
+                    Text(text = stringResource(Res.string.retry))
                 }
             }
         }
@@ -314,24 +318,13 @@ private fun MainWeatherCard(
             Text(text = city, style = MaterialTheme.typography.headlineSmall)
 
             Row(verticalAlignment = Alignment.CenterVertically) {
-                Icon(
-                    imageVector = Icons.Rounded.Thermostat,
-                    contentDescription = null,
-                    modifier = Modifier.size(22.dp)
-                )
+                Icon(imageVector = Icons.Rounded.Thermostat, contentDescription = null, modifier = Modifier.size(22.dp))
                 Spacer(modifier = Modifier.size(8.dp))
-                Text(
-                    text = AppStrings.tempC(temp),
-                    style = MaterialTheme.typography.displaySmall
-                )
+                Text(text = stringResource(Res.string.temp_c, temp), style = MaterialTheme.typography.displaySmall)
             }
 
             Row(verticalAlignment = Alignment.CenterVertically) {
-                Icon(
-                    imageVector = Icons.Rounded.Cloud,
-                    contentDescription = null,
-                    modifier = Modifier.size(20.dp)
-                )
+                Icon(imageVector = Icons.Rounded.Cloud, contentDescription = null, modifier = Modifier.size(20.dp))
                 Spacer(modifier = Modifier.size(8.dp))
                 Text(text = description, style = MaterialTheme.typography.bodyLarge)
             }
@@ -341,25 +334,15 @@ private fun MainWeatherCard(
 
 @Composable
 private fun HourlyRow(hourly: List<HourlyForecast>) {
-    Card(
-        modifier = Modifier.fillMaxWidth(),
-        shape = RoundedCornerShape(16.dp)
-    ) {
+    Card(modifier = Modifier.fillMaxWidth(), shape = RoundedCornerShape(16.dp)) {
         Column(
             modifier = Modifier.fillMaxWidth().padding(16.dp),
             verticalArrangement = Arrangement.spacedBy(10.dp)
         ) {
             Row(verticalAlignment = Alignment.CenterVertically) {
-                Icon(
-                    imageVector = Icons.Rounded.Schedule,
-                    contentDescription = null,
-                    modifier = Modifier.size(20.dp)
-                )
+                Icon(imageVector = Icons.Rounded.Schedule, contentDescription = null, modifier = Modifier.size(20.dp))
                 Spacer(modifier = Modifier.size(8.dp))
-                Text(
-                    text = AppStrings.get(AppStrings.Key.HourlyTitle),
-                    style = MaterialTheme.typography.titleMedium
-                )
+                Text(text = stringResource(Res.string.hourly_title), style = MaterialTheme.typography.titleMedium)
             }
 
             LazyRow(horizontalArrangement = Arrangement.spacedBy(8.dp)) {
@@ -383,25 +366,19 @@ private fun HourChip(hour: String, temp: Int) {
         ) {
             Text(text = hour, style = MaterialTheme.typography.labelMedium)
             Spacer(modifier = Modifier.height(4.dp))
-            Text(text = AppStrings.tempC(temp), style = MaterialTheme.typography.bodyMedium)
+            Text(text = stringResource(Res.string.temp_c, temp), style = MaterialTheme.typography.bodyMedium)
         }
     }
 }
 
 @Composable
 private fun DailyList(daily: List<DailyForecast>) {
-    Card(
-        modifier = Modifier.fillMaxWidth(),
-        shape = RoundedCornerShape(16.dp)
-    ) {
+    Card(modifier = Modifier.fillMaxWidth(), shape = RoundedCornerShape(16.dp)) {
         Column(
             modifier = Modifier.fillMaxWidth().padding(16.dp),
             verticalArrangement = Arrangement.spacedBy(10.dp)
         ) {
-            Text(
-                text = AppStrings.get(AppStrings.Key.DailyTitle),
-                style = MaterialTheme.typography.titleMedium
-            )
+            Text(text = stringResource(Res.string.daily_title), style = MaterialTheme.typography.titleMedium)
 
             Column(verticalArrangement = Arrangement.spacedBy(8.dp)) {
                 daily.take(7).forEach { item ->
@@ -414,10 +391,7 @@ private fun DailyList(daily: List<DailyForecast>) {
 
 @Composable
 private fun DailyRow(item: DailyForecast) {
-    Row(
-        modifier = Modifier.fillMaxWidth(),
-        verticalAlignment = Alignment.CenterVertically
-    ) {
+    Row(modifier = Modifier.fillMaxWidth(), verticalAlignment = Alignment.CenterVertically) {
         Text(
             text = item.day,
             style = MaterialTheme.typography.bodyMedium,
@@ -426,16 +400,10 @@ private fun DailyRow(item: DailyForecast) {
             overflow = TextOverflow.Ellipsis
         )
 
-        Text(
-            text = AppStrings.minTempC(item.minC),
-            style = MaterialTheme.typography.bodySmall
-        )
+        Text(text = stringResource(Res.string.min_temp_c, item.minC), style = MaterialTheme.typography.bodySmall)
 
         Spacer(modifier = Modifier.size(12.dp))
 
-        Text(
-            text = AppStrings.maxTempC(item.maxC),
-            style = MaterialTheme.typography.bodySmall
-        )
+        Text(text = stringResource(Res.string.max_temp_c, item.maxC), style = MaterialTheme.typography.bodySmall)
     }
 }

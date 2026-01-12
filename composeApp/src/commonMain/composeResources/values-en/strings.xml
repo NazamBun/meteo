@@ -1,0 +1,26 @@
+<?xml version="1.0" encoding="utf-8"?>
+<resources>
+    <string name="app_title">Weather</string>
+    <string name="app_subtitle">Pick a city, then check the weather</string>
+
+    <string name="search_title">City search</string>
+    <string name="search_hint">e.g. Paris</string>
+    <string name="search_button">Search</string>
+    <string name="searching">Searching...</string>
+    <string name="results_title">Results</string>
+
+    <string name="loading">Loading...</string>
+    <string name="retry">Retry</string>
+
+    <string name="hourly_title">Hourly</string>
+    <string name="daily_title">Forecast</string>
+
+    <string name="error_no_internet">No internet connection</string>
+    <string name="error_city_not_found">City not found</string>
+    <string name="error_unknown">Unknown error</string>
+
+    <string name="lat_lon">Lat %1$.4f, Lon %2$.4f</string>
+    <string name="temp_c">%1$d C</string>
+    <string name="min_temp_c">Min %1$d C</string>
+    <string name="max_temp_c">Max %1$d C</string>
+</resources>

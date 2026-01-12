@@ -1,0 +1,26 @@
+<?xml version="1.0" encoding="utf-8"?>
+<resources>
+    <string name="app_title">Météo</string>
+    <string name="app_subtitle">Choisis une ville, puis regarde la météo</string>
+
+    <string name="search_title">Recherche de ville</string>
+    <string name="search_hint">Ex: Paris</string>
+    <string name="search_button">Chercher</string>
+    <string name="searching">Recherche...</string>
+    <string name="results_title">Résultats</string>
+
+    <string name="loading">Chargement...</string>
+    <string name="retry">Réessayer</string>
+
+    <string name="hourly_title">Heure par heure</string>
+    <string name="daily_title">Prévisions</string>
+
+    <string name="error_no_internet">Pas de connexion internet</string>
+    <string name="error_city_not_found">Ville introuvable</string>
+    <string name="error_unknown">Erreur inconnue</string>
+
+    <string name="lat_lon">Lat %1$.4f, Lon %2$.4f</string>
+    <string name="temp_c">%1$d C</string>
+    <string name="min_temp_c">Min %1$d C</string>
+    <string name="max_temp_c">Max %1$d C</string>
+</resources>
