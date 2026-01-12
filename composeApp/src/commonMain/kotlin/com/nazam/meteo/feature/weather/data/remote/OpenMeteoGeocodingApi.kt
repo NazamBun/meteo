@@ -21,7 +21,10 @@ class OpenMeteoGeocodingApi(
         return try {
             val dto: GeocodingResponseDto = client.get("https://geocoding-api.open-meteo.com/v1/search") {
                 parameter("name", name)
-                parameter("count", 8)
+
+                // ✅ plus de suggestions pour l'auto-complétion
+                parameter("count", 20)
+
                 parameter("language", "fr")
                 parameter("format", "json")
             }.body()
