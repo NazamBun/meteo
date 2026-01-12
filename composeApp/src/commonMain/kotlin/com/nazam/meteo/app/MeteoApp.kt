@@ -1,7 +1,7 @@
 package com.nazam.meteo.app
 
-import androidx.compose.material3.MaterialTheme
 import androidx.compose.runtime.Composable
+import com.nazam.meteo.core.ui.theme.MeteoTheme
 import org.jetbrains.compose.ui.tooling.preview.Preview
 
 /**
@@ -11,7 +11,7 @@ import org.jetbrains.compose.ui.tooling.preview.Preview
 @Composable
 @Preview
 fun MeteoApp() {
-    MaterialTheme {
+    MeteoTheme {
         AppRoot()
     }
 }
